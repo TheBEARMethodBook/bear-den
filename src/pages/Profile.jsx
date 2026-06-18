@@ -348,6 +348,88 @@ function PrivacySecurity({ onBack }) {
   )
 }
 
+const FAQ_ITEMS = [
+  {
+    question: 'How does the streak work?',
+    answer: 'Your streak counts consecutive days you mark the daily BEAR action done. Miss a day and it resets to zero.',
+  },
+  {
+    question: 'What happens to my Vault entries?',
+    answer: "They're yours, kept in order from newest to oldest. There's no limit to how many you can write.",
+  },
+  {
+    question: 'Can I remove someone from my Garden?',
+    answer: "Not yet from the app directly — reach out and we'll take care of it while that feature is being built.",
+  },
+  {
+    question: 'Is Wingman a real person?',
+    answer: "No, Wingman is an AI coach built into the Den. It's there any time you need to think something through.",
+  },
+  {
+    question: 'How do I change my email address?',
+    answer: "Email changes aren't supported yet from the app. For now, your email stays tied to the account you signed up with.",
+  },
+]
+
+function ChevronDownIcon({ open }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="#9CA8C2"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}
+    >
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  )
+}
+
+function HelpSupport({ onBack }) {
+  const [openIndex, setOpenIndex] = useState(null)
+
+  return (
+    <PhoneFrame>
+      <SettingsHeader title="Help & Support" onBack={onBack} />
+
+      <main className="flex-1 overflow-y-auto px-4 py-6">
+        <p className="text-sm" style={{ color: '#2E2E2E' }}>
+          Answers to the questions we hear most.
+        </p>
+
+        <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm">
+          {FAQ_ITEMS.map((item, index) => {
+            const isOpen = openIndex === index
+            return (
+              <div key={item.question} style={{ borderTop: index === 0 ? 'none' : '1px solid #F0EBE0' }}>
+                <button
+                  type="button"
+                  onClick={() => setOpenIndex(isOpen ? null : index)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left"
+                >
+                  <span className="text-sm font-medium" style={{ color: '#1B2A4A' }}>
+                    {item.question}
+                  </span>
+                  <ChevronDownIcon open={isOpen} />
+                </button>
+                {isOpen && (
+                  <p className="px-4 pb-4 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
+                    {item.answer}
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </main>
+    </PhoneFrame>
+  )
+}
+
 export default function Profile({ onBack }) {
   const { user, signOut } = useAuth()
   const [screen, setScreen] = useState('list')
@@ -362,6 +444,10 @@ export default function Profile({ onBack }) {
 
   if (screen === 'privacySecurity') {
     return <PrivacySecurity onBack={() => setScreen('list')} />
+  }
+
+  if (screen === 'helpSupport') {
+    return <HelpSupport onBack={() => setScreen('list')} />
   }
 
   return (
@@ -409,6 +495,7 @@ export default function Profile({ onBack }) {
                 if (item === 'Edit Profile') setScreen('editProfile')
                 if (item === 'Notifications') setScreen('notifications')
                 if (item === 'Privacy & Security') setScreen('privacySecurity')
+                if (item === 'Help & Support') setScreen('helpSupport')
               }}
               className="flex w-full items-center justify-between px-4 py-3.5 text-left"
               style={{
