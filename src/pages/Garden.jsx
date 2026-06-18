@@ -2,157 +2,101 @@ import { useState } from 'react'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
 
-const STATUS_STYLES = {
-  thriving: { color: '#3F8F5C', label: 'Thriving' },
-  needs_water: { color: '#D9912E', label: 'Needs water' },
-  wilting: { color: '#B3261E', label: 'Wilting' },
+const STAGE_COLOR = {
+  strongest: '#C9A227',
+  healthy: '#3F8F5C',
+  fading: '#D9912E',
+  needsWater: '#B3261E',
 }
 
-const INITIAL_RELATIONSHIPS = [
-  {
-    name: 'Sarah',
-    tag: 'Sister',
-    lastContact: '3 days since last check-in',
-    status: 'thriving',
-    history: [
-      { date: 'Jun 15', note: 'Called to catch up. Talked for almost an hour.' },
-      { date: 'Jun 2', note: 'Sent a text just to say I was thinking of her.' },
-    ],
-  },
-  {
-    name: 'Mike',
-    tag: 'Old friend',
-    lastContact: '12 days since last check-in',
-    status: 'needs_water',
-    history: [
-      { date: 'Jun 6', note: 'Liked his post and left a real comment instead of an emoji.' },
-    ],
-  },
-  {
-    name: 'Dad',
-    tag: 'Family',
-    lastContact: '21 days since last check-in',
-    status: 'wilting',
-    history: [
-      { date: 'May 28', note: 'Quick call on his birthday.' },
-    ],
-  },
-  {
-    name: 'Jordan',
-    tag: 'Business partner',
-    lastContact: '6 days since last check-in',
-    status: 'needs_water',
-    history: [
-      { date: 'Jun 12', note: 'Grabbed coffee to talk through the project, no agenda.' },
-    ],
-  },
+const STAGE_UP = {
+  needsWater: 'fading',
+  fading: 'healthy',
+  healthy: 'strongest',
+  strongest: 'strongest',
+}
+
+const INITIAL_PLANTS = [
+  { name: 'Sarah Chen', stage: 'strongest' },
+  { name: 'Marcus Webb', stage: 'fading' },
+  { name: 'Priya Desai', stage: 'healthy' },
+  { name: 'Liam Foster', stage: 'strongest' },
+  { name: 'Nora Kim', stage: 'needsWater' },
+  { name: 'Derek Hayes', stage: 'healthy' },
+  { name: 'Ava Brooks', stage: 'fading' },
+  { name: 'Connor Wells', stage: 'strongest' },
 ]
 
-function StatusBadge({ status }) {
-  const { color, label } = STATUS_STYLES[status]
+function FlameIcon({ color }) {
   return (
-    <span
-      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-      style={{ backgroundColor: `${color}1A`, color }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: color }} />
-      {label}
-    </span>
-  )
-}
-
-function BackIcon() {
-  return (
-    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M15 18l-6-6 6-6" />
+    <svg viewBox="0 0 24 24" width="16" height="16" fill={color}>
+      <path d="M12 2c1 3-2 4-2 7a3 3 0 0 0 6 0c0-1-.5-2-1-2.5 2 1 3.5 3.5 3.5 6A6.5 6.5 0 0 1 12 19a6.5 6.5 0 0 1-6.5-6.5c0-4 2.5-6 3.5-8.5.5 1.5 1 2 1.5 2C10.5 5 11 3.5 12 2Z" />
     </svg>
   )
 }
 
+function FlowerIcon({ color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="30" height="30" fill="none">
+      <circle cx="12" cy="8" r="2.4" fill={color} />
+      <circle cx="8" cy="10" r="2.4" fill={color} />
+      <circle cx="16" cy="10" r="2.4" fill={color} />
+      <circle cx="9.5" cy="14" r="2.4" fill={color} />
+      <circle cx="14.5" cy="14" r="2.4" fill={color} />
+      <circle cx="12" cy="11.5" r="1.8" fill="#FAF6EE" />
+      <path d="M12 16v5" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function TreeIcon({ color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="30" height="30" fill="none">
+      <path d="M12 3 6 11h3.2L5 18h14l-4.2-7H18z" fill={color} />
+      <path d="M12 18v3" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function PlantIcon({ color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20V10" />
+      <path d="M12 12c0-4-3-5-6-5 0 4 2 6 6 5Z" fill={color} stroke="none" />
+      <path d="M12 9c0-3.5 2.5-4.5 5-4.5 0 3.5-1.5 5.5-5 4.5Z" fill={color} stroke="none" />
+    </svg>
+  )
+}
+
+function SeedlingIcon({ color }) {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20v-7" />
+      <path d="M12 13c0-3 -2-4 -4.5-4 0 3 1.5 4.5 4.5 4Z" fill={color} stroke="none" />
+      <path d="M12 13c0-2.5 1.5-3.5 3.5-3.5 0 2.5 -1.2 3.7 -3.5 3.5Z" fill={color} stroke="none" />
+    </svg>
+  )
+}
+
+function PlantGraphic({ stage }) {
+  const color = STAGE_COLOR[stage]
+  if (stage === 'strongest') return <FlowerIcon color={color} />
+  if (stage === 'healthy') return <TreeIcon color={color} />
+  if (stage === 'fading') return <PlantIcon color={color} />
+  return <SeedlingIcon color={color} />
+}
+
 export default function Garden({ onNavigate }) {
-  const [relationships, setRelationships] = useState(INITIAL_RELATIONSHIPS)
-  const [selectedName, setSelectedName] = useState(null)
+  const [plants, setPlants] = useState(INITIAL_PLANTS)
 
-  const needsAttention = relationships.filter((r) => r.status !== 'thriving').length
-  const selected = relationships.find((r) => r.name === selectedName)
-
-  const logCheckIn = () => {
-    setRelationships((prev) =>
-      prev.map((person) =>
-        person.name === selectedName
-          ? {
-              ...person,
-              status: 'thriving',
-              lastContact: '0 days since last check-in',
-              history: [{ date: 'Today', note: 'Logged a check-in.' }, ...person.history],
-            }
-          : person
+  const waterOne = () => {
+    setPlants((prev) => {
+      const targetIndex = prev.findIndex((p) => p.stage === 'needsWater' || p.stage === 'fading')
+      if (targetIndex === -1) return prev
+      return prev.map((plant, index) =>
+        index === targetIndex ? { ...plant, stage: STAGE_UP[plant.stage] } : plant
       )
-    )
-  }
-
-  if (selected) {
-    return (
-      <PhoneFrame>
-        <header
-          className="flex shrink-0 items-center gap-3 px-4 py-3"
-          style={{ backgroundColor: '#1B2A4A' }}
-        >
-          <button type="button" onClick={() => setSelectedName(null)} aria-label="Back">
-            <BackIcon />
-          </button>
-          <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
-            {selected.name}
-          </span>
-        </header>
-
-        <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-                {selected.tag}
-              </p>
-              <p className="mt-1 text-sm" style={{ color: '#2E2E2E' }}>
-                {selected.lastContact}
-              </p>
-            </div>
-            <StatusBadge status={selected.status} />
-          </div>
-
-          <button
-            type="button"
-            onClick={logCheckIn}
-            className="mt-4 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
-            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
-          >
-            Log a Check-In
-          </button>
-
-          <h2 className="mt-7 text-base font-bold" style={{ color: '#1B2A4A' }}>
-            History
-          </h2>
-
-          <div className="mt-3 flex flex-col gap-3">
-            {selected.history.map((entry, index) => (
-              <div
-                key={`${entry.date}-${index}`}
-                className="rounded-xl border-l-4 bg-white p-4 shadow-sm"
-                style={{ borderColor: '#C9A227' }}
-              >
-                <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-                  {entry.date}
-                </span>
-                <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
-                  {entry.note}
-                </p>
-              </div>
-            ))}
-          </div>
-        </main>
-
-        <BottomNav activeTab="garden" onChange={onNavigate} />
-      </PhoneFrame>
-    )
+    })
   }
 
   return (
@@ -162,53 +106,80 @@ export default function Garden({ onNavigate }) {
         style={{ backgroundColor: '#1B2A4A' }}
       >
         <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
-          Garden
+          Your Garden
         </span>
-        <span className="text-xs font-semibold" style={{ color: '#9CA8C2' }}>
-          {relationships.length} relationships
-        </span>
+        <div
+          className="flex items-center gap-1.5 rounded-full px-3 py-1"
+          style={{ backgroundColor: '#C9A227' }}
+        >
+          <FlameIcon color="#1B2A4A" />
+          <span className="text-xs font-bold" style={{ color: '#1B2A4A' }}>
+            12 days
+          </span>
+        </div>
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
-        <p className="text-sm" style={{ color: '#2E2E2E' }}>
-          Relationships are like plants. A little attention, often, keeps them alive.
-        </p>
-
-        {needsAttention > 0 && (
-          <div
-            className="mt-4 rounded-xl p-4"
-            style={{ backgroundColor: '#1B2A4A' }}
-          >
-            <p className="text-sm font-medium text-white">
-              {needsAttention} relationship{needsAttention === 1 ? '' : 's'} could use a small act of care today.
-            </p>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm">
+            <span className="text-xl font-bold" style={{ color: '#1B2A4A' }}>
+              17
+            </span>
+            <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
+              Tended
+            </span>
           </div>
-        )}
+          <div className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm">
+            <span className="text-xl font-bold" style={{ color: '#D9912E' }}>
+              4
+            </span>
+            <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
+              Fading
+            </span>
+          </div>
+          <div className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm">
+            <span className="text-xl font-bold" style={{ color: '#B3261E' }}>
+              2
+            </span>
+            <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
+              Need Water
+            </span>
+          </div>
+        </div>
 
-        <div className="mt-6 flex flex-col gap-3">
-          {relationships.map((person) => (
-            <button
-              key={person.name}
-              type="button"
-              onClick={() => setSelectedName(person.name)}
-              className="rounded-xl bg-white p-4 text-left shadow-sm"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-base font-semibold" style={{ color: '#1B2A4A' }}>
-                    {person.name}
-                  </p>
-                  <p className="text-xs" style={{ color: '#9CA8C2' }}>
-                    {person.tag}
-                  </p>
-                </div>
-                <StatusBadge status={person.status} />
+        <div className="mt-5 grid grid-cols-4 gap-3">
+          {plants.map((plant) => (
+            <div key={plant.name} className="flex flex-col items-center gap-1.5">
+              <div
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm"
+              >
+                <PlantGraphic stage={plant.stage} />
               </div>
-              <p className="mt-3 text-sm" style={{ color: '#2E2E2E' }}>
-                {person.lastContact}
-              </p>
-            </button>
+              <span
+                className="text-center text-xs font-medium leading-tight"
+                style={{ color: '#1B2A4A' }}
+              >
+                {plant.name.split(' ')[0]}
+              </span>
+            </div>
           ))}
+        </div>
+
+        <div
+          className="mt-6 rounded-2xl p-5 shadow-lg"
+          style={{ backgroundColor: '#1B2A4A' }}
+        >
+          <p className="text-sm font-medium leading-snug text-white">
+            One text changes a plant's color today.
+          </p>
+          <button
+            type="button"
+            onClick={waterOne}
+            className="mt-4 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            Water it
+          </button>
         </div>
       </main>
 
