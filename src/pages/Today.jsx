@@ -16,6 +16,13 @@ function getGreeting() {
   return 'Good evening'
 }
 
+function getInitials(user) {
+  const fullName = user?.user_metadata?.full_name
+  if (fullName) return fullName[0].toUpperCase()
+  if (user?.email) return user.email[0].toUpperCase()
+  return '?'
+}
+
 function FlameIcon({ color }) {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill={color}>
@@ -40,14 +47,25 @@ export default function Today({ onNavigate }) {
           <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
             The BEAR Den
           </span>
-          <div
-            className="flex items-center gap-1.5 rounded-full px-3 py-1"
-            style={{ backgroundColor: '#C9A227' }}
-          >
-            <FlameIcon color="#1B2A4A" />
-            <span className="text-xs font-bold" style={{ color: '#1B2A4A' }}>
-              12 days
-            </span>
+          <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-1.5 rounded-full px-3 py-1"
+              style={{ backgroundColor: '#C9A227' }}
+            >
+              <FlameIcon color="#1B2A4A" />
+              <span className="text-xs font-bold" style={{ color: '#1B2A4A' }}>
+                12 days
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigate('profile')}
+              aria-label="Profile"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold"
+              style={{ backgroundColor: '#2E3F63', color: '#C9A227' }}
+            >
+              {getInitials(user)}
+            </button>
           </div>
         </header>
 

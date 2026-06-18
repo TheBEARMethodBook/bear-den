@@ -5,6 +5,7 @@ import Today from './pages/Today'
 import Vault from './pages/Vault'
 import Garden from './pages/Garden'
 import Wingman from './pages/Wingman'
+import Profile from './pages/Profile'
 
 function App() {
   const { user, loading } = useAuth()
@@ -25,6 +26,10 @@ function App() {
 
   if (!user) {
     return <Auth />
+  }
+
+  if (activeTab === 'profile') {
+    return <Profile onBack={() => setActiveTab('today')} />
   }
 
   if (activeTab === 'vault') {
