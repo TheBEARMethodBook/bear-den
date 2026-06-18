@@ -11,6 +11,13 @@ const STAGE_DOT = {
   Restore: '#B3261E',
 }
 
+const STAGE_NEXT = {
+  Restore: 'Building',
+  Building: 'Engaging',
+  Engaging: 'Strong',
+  Strong: 'Strong',
+}
+
 const INITIAL_PEOPLE = [
   {
     name: 'Sarah Chen',
@@ -18,6 +25,10 @@ const INITIAL_PEOPLE = [
     lastContacted: '2 days ago',
     stage: 'Strong',
     dot: '#3F8F5C',
+    history: [
+      { date: 'Jun 16', note: 'Grabbed coffee and talked for an hour.' },
+      { date: 'May 30', note: 'Called on her birthday.' },
+    ],
   },
   {
     name: 'Marcus Webb',
@@ -25,6 +36,9 @@ const INITIAL_PEOPLE = [
     lastContacted: '3 weeks ago',
     stage: 'Building',
     dot: '#D9912E',
+    history: [
+      { date: 'May 28', note: 'Texted to see how the new job was going.' },
+    ],
   },
   {
     name: 'James Patel',
@@ -32,6 +46,9 @@ const INITIAL_PEOPLE = [
     lastContacted: '2 months ago',
     stage: 'Restore',
     dot: '#B3261E',
+    history: [
+      { date: 'Apr 14', note: 'Sent a thank-you note after his advice helped a lot.' },
+    ],
   },
 ]
 
@@ -175,11 +192,85 @@ function AddPerson({ onBack, onSave }) {
   )
 }
 
+function PersonDetail({ person, onBack, onLogInteraction }) {
+  return (
+    <PhoneFrame>
+      <header
+        className="flex shrink-0 items-center gap-3 px-4 py-3"
+        style={{ backgroundColor: '#1B2A4A' }}
+      >
+        <button type="button" onClick={onBack} aria-label="Back">
+          <BackIcon />
+        </button>
+        <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
+          {person.name}
+        </span>
+      </header>
+
+      <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              {person.relationship}
+            </p>
+            <p className="mt-1 text-sm" style={{ color: '#2E2E2E' }}>
+              {person.lastContacted}
+            </p>
+          </div>
+          <span
+            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+            style={{ backgroundColor: `${person.dot}1A`, color: person.dot }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: person.dot }} />
+            {person.stage}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onLogInteraction}
+          className="mt-4 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+          style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+        >
+          Log Interaction
+        </button>
+
+        <h2 className="mt-7 text-base font-bold" style={{ color: '#1B2A4A' }}>
+          History
+        </h2>
+
+        <div className="mt-3 flex flex-col gap-3">
+          {person.history.length === 0 && (
+            <p className="text-sm" style={{ color: '#9CA8C2' }}>
+              No history yet.
+            </p>
+          )}
+          {person.history.map((entry, index) => (
+            <div
+              key={`${entry.date}-${index}`}
+              className="rounded-xl border-l-4 bg-white p-4 shadow-sm"
+              style={{ borderColor: '#C9A227' }}
+            >
+              <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+                {entry.date}
+              </span>
+              <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
+                {entry.note}
+              </p>
+            </div>
+          ))}
+        </div>
+      </main>
+    </PhoneFrame>
+  )
+}
+
 export default function Vault({ onNavigate }) {
   const [people, setPeople] = useState(INITIAL_PEOPLE)
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState('All')
   const [isAdding, setIsAdding] = useState(false)
+  const [selectedName, setSelectedName] = useState(null)
 
   const filteredPeople = people.filter((person) => {
     const matchesFilter = activeFilter === 'All' || person.stage === activeFilter
@@ -187,13 +278,39 @@ export default function Vault({ onNavigate }) {
     return matchesFilter && matchesQuery
   })
 
+  const selectedPerson = people.find((person) => person.name === selectedName)
+
   if (isAdding) {
     return (
       <AddPerson
         onBack={() => setIsAdding(false)}
         onSave={(person) => {
-          setPeople((prev) => [person, ...prev])
+          setPeople((prev) => [{ ...person, history: [] }, ...prev])
           setIsAdding(false)
+        }}
+      />
+    )
+  }
+
+  if (selectedPerson) {
+    return (
+      <PersonDetail
+        person={selectedPerson}
+        onBack={() => setSelectedName(null)}
+        onLogInteraction={() => {
+          setPeople((prev) =>
+            prev.map((person) => {
+              if (person.name !== selectedName) return person
+              const nextStage = STAGE_NEXT[person.stage]
+              return {
+                ...person,
+                stage: nextStage,
+                dot: STAGE_DOT[nextStage],
+                lastContacted: 'Just now',
+                history: [{ date: 'Today', note: 'Logged an interaction.' }, ...person.history],
+              }
+            })
+          )
         }}
       />
     )
@@ -257,9 +374,11 @@ export default function Vault({ onNavigate }) {
 
         <div className="mt-5 flex flex-col gap-3">
           {filteredPeople.map((person) => (
-            <div
+            <button
               key={person.name}
-              className="flex items-center gap-3 rounded-xl bg-white p-4 shadow-sm"
+              type="button"
+              onClick={() => setSelectedName(person.name)}
+              className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
             >
               <div
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold"
@@ -282,7 +401,7 @@ export default function Vault({ onNavigate }) {
                 style={{ backgroundColor: person.dot }}
                 title={person.stage}
               />
-            </div>
+            </button>
           ))}
 
           {filteredPeople.length === 0 && (
