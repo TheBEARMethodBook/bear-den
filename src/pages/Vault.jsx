@@ -1,7 +1,8 @@
+import { useState } from 'react'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
 
-const ENTRIES = [
+const INITIAL_ENTRIES = [
   {
     date: 'Jun 16',
     chapter: 'Chapter 8',
@@ -24,7 +25,95 @@ const ENTRIES = [
   },
 ]
 
+function formatToday() {
+  return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  )
+}
+
 export default function Vault({ onNavigate }) {
+  const [entries, setEntries] = useState(INITIAL_ENTRIES)
+  const [isWriting, setIsWriting] = useState(false)
+  const [chapter, setChapter] = useState('')
+  const [text, setText] = useState('')
+
+  const saveEntry = (event) => {
+    event.preventDefault()
+    const trimmed = text.trim()
+    if (!trimmed) return
+
+    setEntries((prev) => [
+      { date: formatToday(), chapter: chapter.trim() || 'Personal', text: trimmed },
+      ...prev,
+    ])
+    setChapter('')
+    setText('')
+    setIsWriting(false)
+  }
+
+  if (isWriting) {
+    return (
+      <PhoneFrame>
+        <header
+          className="flex shrink-0 items-center gap-3 px-4 py-3"
+          style={{ backgroundColor: '#1B2A4A' }}
+        >
+          <button type="button" onClick={() => setIsWriting(false)} aria-label="Back">
+            <BackIcon />
+          </button>
+          <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
+            New Entry
+          </span>
+        </header>
+
+        <form onSubmit={saveEntry} className="flex flex-1 flex-col overflow-y-auto px-4 py-5">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              Chapter (optional)
+            </span>
+            <input
+              type="text"
+              value={chapter}
+              onChange={(event) => setChapter(event.target.value)}
+              placeholder="e.g. Chapter 8"
+              className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
+              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
+            />
+          </label>
+
+          <label className="mt-4 flex flex-1 flex-col gap-1">
+            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              What happened?
+            </span>
+            <textarea
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+              placeholder="Write what you noticed, what you did, or how it felt…"
+              className="flex-1 resize-none rounded-lg border px-4 py-3 text-base leading-snug outline-none focus:ring-2"
+              style={{ borderColor: '#1B2A4A', color: '#2E2E2E', minHeight: '160px' }}
+              autoFocus
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={!text.trim()}
+            className="mt-5 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            Save Entry
+          </button>
+        </form>
+      </PhoneFrame>
+    )
+  }
+
   return (
     <PhoneFrame>
       <header
@@ -35,7 +124,7 @@ export default function Vault({ onNavigate }) {
           Vault
         </span>
         <span className="text-xs font-semibold" style={{ color: '#9CA8C2' }}>
-          {ENTRIES.length} reflections
+          {entries.length} reflections
         </span>
       </header>
 
@@ -46,6 +135,7 @@ export default function Vault({ onNavigate }) {
 
         <button
           type="button"
+          onClick={() => setIsWriting(true)}
           className="mt-4 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
           style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
         >
@@ -53,9 +143,9 @@ export default function Vault({ onNavigate }) {
         </button>
 
         <div className="mt-6 flex flex-col gap-3">
-          {ENTRIES.map((entry) => (
+          {entries.map((entry, index) => (
             <div
-              key={entry.date}
+              key={`${entry.date}-${index}`}
               className="rounded-xl border-l-4 bg-white p-4 shadow-sm"
               style={{ borderColor: '#C9A227' }}
             >
