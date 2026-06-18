@@ -3,6 +3,7 @@ import { useAuth } from './contexts/useAuth'
 import Auth from './pages/Auth'
 import Today from './pages/Today'
 import Vault from './pages/Vault'
+import Garden from './pages/Garden'
 import ComingSoon from './pages/ComingSoon'
 
 function App() {
@@ -31,7 +32,7 @@ function App() {
   }
 
   if (activeTab === 'garden') {
-    return <ComingSoon tab="garden" label="Garden" onNavigate={setActiveTab} />
+    return <Garden onNavigate={setActiveTab} />
   }
 
   if (activeTab === 'wingman') {
