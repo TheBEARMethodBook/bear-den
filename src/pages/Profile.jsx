@@ -10,6 +10,33 @@ const STATS = [
 
 const SETTINGS = ['Edit Profile', 'Notifications', 'Privacy & Security', 'Help & Support']
 
+const NOTIFICATION_TYPES = [
+  {
+    key: 'dailyAction',
+    label: 'Daily BEAR action',
+    description: "A reminder when today's action hasn't been marked done yet.",
+    default: true,
+  },
+  {
+    key: 'gardenNudges',
+    label: 'Garden check-ins',
+    description: 'Nudges when a relationship needs a little water.',
+    default: true,
+  },
+  {
+    key: 'vaultReminders',
+    label: 'Vault streak reminders',
+    description: "A heads up before today's reflection streak resets.",
+    default: false,
+  },
+  {
+    key: 'wingmanReplies',
+    label: 'Wingman replies',
+    description: 'Let your Wingman know to follow up on open conversations.',
+    default: true,
+  },
+]
+
 function getInitials(user) {
   const fullName = user?.user_metadata?.full_name
   if (fullName) {
@@ -47,6 +74,39 @@ function ChevronIcon() {
   )
 }
 
+function Toggle({ on, onChange }) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      aria-pressed={on}
+      className="relative h-6 w-11 shrink-0 rounded-full transition-colors"
+      style={{ backgroundColor: on ? '#C9A227' : '#D9D2C2' }}
+    >
+      <span
+        className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform"
+        style={{ transform: on ? 'translateX(22px)' : 'translateX(2px)' }}
+      />
+    </button>
+  )
+}
+
+function SettingsHeader({ title, onBack }) {
+  return (
+    <header
+      className="flex shrink-0 items-center gap-3 px-4 py-3"
+      style={{ backgroundColor: '#1B2A4A' }}
+    >
+      <button type="button" onClick={onBack} aria-label="Back">
+        <BackIcon />
+      </button>
+      <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
+        {title}
+      </span>
+    </header>
+  )
+}
+
 function EditProfile({ onBack }) {
   const { user, updateProfile } = useAuth()
   const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '')
@@ -70,17 +130,7 @@ function EditProfile({ onBack }) {
 
   return (
     <PhoneFrame>
-      <header
-        className="flex shrink-0 items-center gap-3 px-4 py-3"
-        style={{ backgroundColor: '#1B2A4A' }}
-      >
-        <button type="button" onClick={onBack} aria-label="Back">
-          <BackIcon />
-        </button>
-        <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
-          Edit Profile
-        </span>
-      </header>
+      <SettingsHeader title="Edit Profile" onBack={onBack} />
 
       <main className="flex-1 overflow-y-auto px-4 py-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -140,27 +190,63 @@ function EditProfile({ onBack }) {
   )
 }
 
-export default function Profile({ onBack }) {
-  const { user, signOut } = useAuth()
-  const [editing, setEditing] = useState(false)
+function Notifications({ onBack }) {
+  const [prefs, setPrefs] = useState(
+    Object.fromEntries(NOTIFICATION_TYPES.map((type) => [type.key, type.default]))
+  )
 
-  if (editing) {
-    return <EditProfile onBack={() => setEditing(false)} />
+  const toggle = (key) => {
+    setPrefs((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
   return (
     <PhoneFrame>
-      <header
-        className="flex shrink-0 items-center gap-3 px-4 py-3"
-        style={{ backgroundColor: '#1B2A4A' }}
-      >
-        <button type="button" onClick={onBack} aria-label="Back">
-          <BackIcon />
-        </button>
-        <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
-          Profile
-        </span>
-      </header>
+      <SettingsHeader title="Notifications" onBack={onBack} />
+
+      <main className="flex-1 overflow-y-auto px-4 py-6">
+        <p className="text-sm" style={{ color: '#2E2E2E' }}>
+          Choose what The BEAR Den should check in with you about.
+        </p>
+
+        <div className="mt-4 overflow-hidden rounded-xl bg-white shadow-sm">
+          {NOTIFICATION_TYPES.map((type, index) => (
+            <div
+              key={type.key}
+              className="flex items-start gap-3 px-4 py-3.5"
+              style={{ borderTop: index === 0 ? 'none' : '1px solid #F0EBE0' }}
+            >
+              <div className="flex-1">
+                <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+                  {type.label}
+                </p>
+                <p className="mt-0.5 text-xs leading-snug" style={{ color: '#9CA8C2' }}>
+                  {type.description}
+                </p>
+              </div>
+              <Toggle on={prefs[type.key]} onChange={() => toggle(type.key)} />
+            </div>
+          ))}
+        </div>
+      </main>
+    </PhoneFrame>
+  )
+}
+
+export default function Profile({ onBack }) {
+  const { user, signOut } = useAuth()
+  const [screen, setScreen] = useState('list')
+
+  if (screen === 'editProfile') {
+    return <EditProfile onBack={() => setScreen('list')} />
+  }
+
+  if (screen === 'notifications') {
+    return <Notifications onBack={() => setScreen('list')} />
+  }
+
+  return (
+    <PhoneFrame>
+      <SettingsHeader title="Profile" onBack={onBack} />
 
       <main className="flex-1 overflow-y-auto px-4 py-6">
         <div className="flex flex-col items-center text-center">
@@ -199,7 +285,10 @@ export default function Profile({ onBack }) {
             <button
               key={item}
               type="button"
-              onClick={() => item === 'Edit Profile' && setEditing(true)}
+              onClick={() => {
+                if (item === 'Edit Profile') setScreen('editProfile')
+                if (item === 'Notifications') setScreen('notifications')
+              }}
               className="flex w-full items-center justify-between px-4 py-3.5 text-left"
               style={{
                 borderTop: index === 0 ? 'none' : '1px solid #F0EBE0',
