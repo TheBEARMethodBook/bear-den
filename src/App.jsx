@@ -4,7 +4,7 @@ import Auth from './pages/Auth'
 import Today from './pages/Today'
 import Vault from './pages/Vault'
 import Garden from './pages/Garden'
-import ComingSoon from './pages/ComingSoon'
+import Wingman from './pages/Wingman'
 
 function App() {
   const { user, loading } = useAuth()
@@ -36,7 +36,7 @@ function App() {
   }
 
   if (activeTab === 'wingman') {
-    return <ComingSoon tab="wingman" label="Wingman" onNavigate={setActiveTab} />
+    return <Wingman onNavigate={setActiveTab} />
   }
 
   return <Today onNavigate={setActiveTab} />
