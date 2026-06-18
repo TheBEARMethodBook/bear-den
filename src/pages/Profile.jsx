@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import PhoneFrame from '../components/PhoneFrame'
 
@@ -46,8 +47,106 @@ function ChevronIcon() {
   )
 }
 
+function EditProfile({ onBack }) {
+  const { user, updateProfile } = useAuth()
+  const [fullName, setFullName] = useState(user?.user_metadata?.full_name || '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setError('')
+    setSaving(true)
+    try {
+      await updateProfile({ data: { full_name: fullName.trim() } })
+      setSaved(true)
+    } catch (err) {
+      setError(err.message || 'Could not save your changes. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <PhoneFrame>
+      <header
+        className="flex shrink-0 items-center gap-3 px-4 py-3"
+        style={{ backgroundColor: '#1B2A4A' }}
+      >
+        <button type="button" onClick={onBack} aria-label="Back">
+          <BackIcon />
+        </button>
+        <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
+          Edit Profile
+        </span>
+      </header>
+
+      <main className="flex-1 overflow-y-auto px-4 py-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              Full name
+            </span>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(event) => {
+                setFullName(event.target.value)
+                setSaved(false)
+              }}
+              placeholder="Your name"
+              className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
+              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              Email
+            </span>
+            <input
+              type="email"
+              value={user?.email || ''}
+              disabled
+              className="rounded-lg border px-4 py-2 text-base opacity-60"
+              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
+            />
+          </label>
+
+          {error && (
+            <p className="rounded-lg px-3 py-2 text-sm font-medium" style={{ backgroundColor: '#FBEAEA', color: '#B3261E' }}>
+              {error}
+            </p>
+          )}
+
+          {saved && (
+            <p className="rounded-lg px-3 py-2 text-sm font-medium" style={{ backgroundColor: '#FCF3D9', color: '#1B2A4A' }}>
+              Saved.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="mt-2 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </form>
+      </main>
+    </PhoneFrame>
+  )
+}
+
 export default function Profile({ onBack }) {
   const { user, signOut } = useAuth()
+  const [editing, setEditing] = useState(false)
+
+  if (editing) {
+    return <EditProfile onBack={() => setEditing(false)} />
+  }
 
   return (
     <PhoneFrame>
@@ -100,6 +199,7 @@ export default function Profile({ onBack }) {
             <button
               key={item}
               type="button"
+              onClick={() => item === 'Edit Profile' && setEditing(true)}
               className="flex w-full items-center justify-between px-4 py-3.5 text-left"
               style={{
                 borderTop: index === 0 ? 'none' : '1px solid #F0EBE0',
