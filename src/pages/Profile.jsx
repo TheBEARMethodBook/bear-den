@@ -232,6 +232,122 @@ function Notifications({ onBack }) {
   )
 }
 
+function formatJoinDate(isoString) {
+  if (!isoString) return 'Unknown'
+  return new Date(isoString).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+}
+
+function PrivacySecurity({ onBack }) {
+  const { user, updateProfile } = useAuth()
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setError('')
+    setSaved(false)
+
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters.')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await updateProfile({ password: newPassword })
+      setSaved(true)
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err) {
+      setError(err.message || 'Could not update your password. Please try again.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <PhoneFrame>
+      <SettingsHeader title="Privacy & Security" onBack={onBack} />
+
+      <main className="flex-1 overflow-y-auto px-4 py-6">
+        <div className="rounded-xl bg-white p-4 shadow-sm">
+          <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+            Signed in as
+          </p>
+          <p className="mt-1 text-sm" style={{ color: '#2E2E2E' }}>
+            {user?.email}
+          </p>
+          <p className="mt-2 text-xs" style={{ color: '#9CA8C2' }}>
+            Member since {formatJoinDate(user?.created_at)}
+          </p>
+        </div>
+
+        <h2 className="mt-6 text-base font-bold" style={{ color: '#1B2A4A' }}>
+          Change Password
+        </h2>
+
+        <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              New password
+            </span>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              placeholder="••••••••"
+              className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
+              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              Confirm new password
+            </span>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="••••••••"
+              className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
+              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
+            />
+          </label>
+
+          {error && (
+            <p className="rounded-lg px-3 py-2 text-sm font-medium" style={{ backgroundColor: '#FBEAEA', color: '#B3261E' }}>
+              {error}
+            </p>
+          )}
+
+          {saved && (
+            <p className="rounded-lg px-3 py-2 text-sm font-medium" style={{ backgroundColor: '#FCF3D9', color: '#1B2A4A' }}>
+              Password updated.
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="mt-2 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            {saving ? 'Updating…' : 'Update Password'}
+          </button>
+        </form>
+      </main>
+    </PhoneFrame>
+  )
+}
+
 export default function Profile({ onBack }) {
   const { user, signOut } = useAuth()
   const [screen, setScreen] = useState('list')
@@ -242,6 +358,10 @@ export default function Profile({ onBack }) {
 
   if (screen === 'notifications') {
     return <Notifications onBack={() => setScreen('list')} />
+  }
+
+  if (screen === 'privacySecurity') {
+    return <PrivacySecurity onBack={() => setScreen('list')} />
   }
 
   return (
@@ -288,6 +408,7 @@ export default function Profile({ onBack }) {
               onClick={() => {
                 if (item === 'Edit Profile') setScreen('editProfile')
                 if (item === 'Notifications') setScreen('notifications')
+                if (item === 'Privacy & Security') setScreen('privacySecurity')
               }}
               className="flex w-full items-center justify-between px-4 py-3.5 text-left"
               style={{
