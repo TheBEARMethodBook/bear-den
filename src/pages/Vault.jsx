@@ -4,7 +4,14 @@ import PhoneFrame from '../components/PhoneFrame'
 
 const FILTERS = ['All', 'Building', 'Engaging', 'Strong', 'Restore']
 
-const PEOPLE = [
+const STAGE_DOT = {
+  Building: '#D9912E',
+  Engaging: '#3F8F5C',
+  Strong: '#3F8F5C',
+  Restore: '#B3261E',
+}
+
+const INITIAL_PEOPLE = [
   {
     name: 'Sarah Chen',
     relationship: 'Sister',
@@ -56,15 +63,141 @@ function BenchIcon() {
   )
 }
 
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  )
+}
+
+function AddPerson({ onBack, onSave }) {
+  const [name, setName] = useState('')
+  const [relationship, setRelationship] = useState('')
+  const [stage, setStage] = useState('Building')
+
+  const handleSubmit = (event) => {
+    event.preventDefault()
+    const trimmedName = name.trim()
+    if (!trimmedName) return
+
+    onSave({
+      name: trimmedName,
+      relationship: relationship.trim() || 'Contact',
+      lastContacted: 'Just now',
+      stage,
+      dot: STAGE_DOT[stage],
+    })
+  }
+
+  return (
+    <PhoneFrame>
+      <header
+        className="flex shrink-0 items-center gap-3 px-4 py-3"
+        style={{ backgroundColor: '#1B2A4A' }}
+      >
+        <button type="button" onClick={onBack} aria-label="Back">
+          <BackIcon />
+        </button>
+        <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
+          Add Person
+        </span>
+      </header>
+
+      <main className="flex-1 overflow-y-auto px-4 py-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              Name
+            </span>
+            <input
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Their name"
+              className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
+              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
+              autoFocus
+            />
+          </label>
+
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              Relationship
+            </span>
+            <input
+              type="text"
+              value={relationship}
+              onChange={(event) => setRelationship(event.target.value)}
+              placeholder="e.g. Sister, Mentor, Old friend"
+              className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
+              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
+            />
+          </label>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              Stage
+            </span>
+            <div className="flex gap-2">
+              {FILTERS.filter((f) => f !== 'All').map((option) => {
+                const isActive = stage === option
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setStage(option)}
+                    className="flex-1 rounded-full px-2 py-2 text-xs font-semibold uppercase tracking-wide"
+                    style={
+                      isActive
+                        ? { backgroundColor: '#C9A227', color: '#1B2A4A' }
+                        : { backgroundColor: '#FFFFFF', color: '#1B2A4A', border: '1px solid #1B2A4A' }
+                    }
+                  >
+                    {option}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="mt-2 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            Add to Vault
+          </button>
+        </form>
+      </main>
+    </PhoneFrame>
+  )
+}
+
 export default function Vault({ onNavigate }) {
+  const [people, setPeople] = useState(INITIAL_PEOPLE)
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState('All')
+  const [isAdding, setIsAdding] = useState(false)
 
-  const filteredPeople = PEOPLE.filter((person) => {
+  const filteredPeople = people.filter((person) => {
     const matchesFilter = activeFilter === 'All' || person.stage === activeFilter
     const matchesQuery = person.name.toLowerCase().includes(query.trim().toLowerCase())
     return matchesFilter && matchesQuery
   })
+
+  if (isAdding) {
+    return (
+      <AddPerson
+        onBack={() => setIsAdding(false)}
+        onSave={(person) => {
+          setPeople((prev) => [person, ...prev])
+          setIsAdding(false)
+        }}
+      />
+    )
+  }
 
   return (
     <PhoneFrame>
@@ -77,6 +210,7 @@ export default function Vault({ onNavigate }) {
         </span>
         <button
           type="button"
+          onClick={() => setIsAdding(true)}
           className="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide shadow-md"
           style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
         >
