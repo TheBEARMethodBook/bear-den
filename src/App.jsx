@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from './contexts/useAuth'
 import Auth from './pages/Auth'
+import Onboarding from './pages/Onboarding'
 import Today from './pages/Today'
 import Vault from './pages/Vault'
 import Garden from './pages/Garden'
@@ -10,6 +11,7 @@ import Profile from './pages/Profile'
 function App() {
   const { user, loading } = useAuth()
   const [activeTab, setActiveTab] = useState('today')
+  const [hasOnboarded, setHasOnboarded] = useState(false)
 
   if (loading) {
     return (
@@ -26,6 +28,19 @@ function App() {
 
   if (!user) {
     return <Auth />
+  }
+
+  const onboardingKey = `bearden_onboarded_${user.id}`
+
+  if (!hasOnboarded && localStorage.getItem(onboardingKey) !== 'true') {
+    return (
+      <Onboarding
+        onComplete={() => {
+          localStorage.setItem(onboardingKey, 'true')
+          setHasOnboarded(true)
+        }}
+      />
+    )
   }
 
   if (activeTab === 'profile') {

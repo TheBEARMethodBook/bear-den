@@ -1,4 +1,4 @@
-function NavIcon({ name, color }) {
+export function NavIcon({ name, color }) {
   const icons = {
     today: (
       <path d="M7 2v3M17 2v3M3.5 9h17M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
