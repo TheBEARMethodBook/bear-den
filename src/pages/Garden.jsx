@@ -1,4 +1,5 @@
 import BottomNav from '../components/BottomNav'
+import PhoneFrame from '../components/PhoneFrame'
 
 const STATUS_STYLES = {
   thriving: { color: '#3F8F5C', label: 'Thriving' },
@@ -50,63 +51,61 @@ export default function Garden({ onNavigate }) {
   const needsAttention = RELATIONSHIPS.filter((r) => r.status !== 'thriving').length
 
   return (
-    <div className="flex min-h-screen w-full justify-center" style={{ backgroundColor: '#FAF6EE' }}>
-      <div className="relative flex h-screen w-full max-w-[430px] flex-col">
-        <header
-          className="flex shrink-0 items-center justify-between px-4 py-3"
-          style={{ backgroundColor: '#1B2A4A' }}
-        >
-          <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
-            Garden
-          </span>
-          <span className="text-xs font-semibold" style={{ color: '#9CA8C2' }}>
-            {RELATIONSHIPS.length} relationships
-          </span>
-        </header>
+    <PhoneFrame>
+      <header
+        className="flex shrink-0 items-center justify-between px-4 py-3"
+        style={{ backgroundColor: '#1B2A4A' }}
+      >
+        <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
+          Garden
+        </span>
+        <span className="text-xs font-semibold" style={{ color: '#9CA8C2' }}>
+          {RELATIONSHIPS.length} relationships
+        </span>
+      </header>
 
-        <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
-          <p className="text-sm" style={{ color: '#2E2E2E' }}>
-            Relationships are like plants. A little attention, often, keeps them alive.
-          </p>
+      <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
+        <p className="text-sm" style={{ color: '#2E2E2E' }}>
+          Relationships are like plants. A little attention, often, keeps them alive.
+        </p>
 
-          {needsAttention > 0 && (
+        {needsAttention > 0 && (
+          <div
+            className="mt-4 rounded-xl p-4"
+            style={{ backgroundColor: '#1B2A4A' }}
+          >
+            <p className="text-sm font-medium text-white">
+              {needsAttention} relationship{needsAttention === 1 ? '' : 's'} could use a small act of care today.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-col gap-3">
+          {RELATIONSHIPS.map((person) => (
             <div
-              className="mt-4 rounded-xl p-4"
-              style={{ backgroundColor: '#1B2A4A' }}
+              key={person.name}
+              className="rounded-xl bg-white p-4 shadow-sm"
             >
-              <p className="text-sm font-medium text-white">
-                {needsAttention} relationship{needsAttention === 1 ? '' : 's'} could use a small act of care today.
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-base font-semibold" style={{ color: '#1B2A4A' }}>
+                    {person.name}
+                  </p>
+                  <p className="text-xs" style={{ color: '#9CA8C2' }}>
+                    {person.tag}
+                  </p>
+                </div>
+                <StatusBadge status={person.status} />
+              </div>
+              <p className="mt-3 text-sm" style={{ color: '#2E2E2E' }}>
+                {person.lastContact}
               </p>
             </div>
-          )}
+          ))}
+        </div>
+      </main>
 
-          <div className="mt-6 flex flex-col gap-3">
-            {RELATIONSHIPS.map((person) => (
-              <div
-                key={person.name}
-                className="rounded-xl bg-white p-4 shadow-sm"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-base font-semibold" style={{ color: '#1B2A4A' }}>
-                      {person.name}
-                    </p>
-                    <p className="text-xs" style={{ color: '#9CA8C2' }}>
-                      {person.tag}
-                    </p>
-                  </div>
-                  <StatusBadge status={person.status} />
-                </div>
-                <p className="mt-3 text-sm" style={{ color: '#2E2E2E' }}>
-                  {person.lastContact}
-                </p>
-              </div>
-            ))}
-          </div>
-        </main>
-
-        <BottomNav activeTab="garden" onChange={onNavigate} />
-      </div>
-    </div>
+      <BottomNav activeTab="garden" onChange={onNavigate} />
+    </PhoneFrame>
   )
 }
