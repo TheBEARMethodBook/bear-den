@@ -5,8 +5,8 @@ const SLIDES = [
   {
     icon: null,
     title: 'The BEAR Den',
-    tagline: 'Be Impossible to Replace',
-    description: 'Build the relationships and habits that make you irreplaceable, one small action at a time.',
+    tagline: 'Be IMPOSSIBLE to Replace',
+    description: 'Build the relationships and habits that make you IMPOSSIBLE to replace, one small action at a time.',
   },
   {
     icon: 'today',

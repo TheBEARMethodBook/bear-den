@@ -48,7 +48,7 @@ export default function Auth() {
           The BEAR Den
         </h1>
         <p className="mt-2 text-base font-medium" style={{ color: '#FAF6EE' }}>
-          Be Impossible to Replace
+          Be IMPOSSIBLE to Replace
         </p>
       </div>
 

@@ -78,7 +78,7 @@ function CelebrationOverlay({ streak, isFirstEver, onDismiss }) {
       <p className="mt-2 text-xs font-bold uppercase tracking-widest" style={{ color: '#C9A227' }}>
         {streak === 1 ? 'Day Streak' : 'Day Streak'}
       </p>
-      <p className="mt-8 text-xl font-bold text-white">You're becoming irreplaceable.</p>
+      <p className="mt-8 text-xl font-bold text-white">You're becoming IMPOSSIBLE to replace.</p>
       {subMessage && (
         <p className="mt-4 text-base leading-relaxed" style={{ color: '#FAF6EE' }}>
           {subMessage}
