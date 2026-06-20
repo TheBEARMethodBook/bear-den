@@ -35,31 +35,47 @@ const SCRIPTS = [
   },
 ]
 
-const OPTION_ANGLE_INSTRUCTIONS = [
-  null,
-  'Write this as a second, alternative version of the same message. Give it a noticeably different opening line, tone, and angle than a first version would use, while staying grounded in the Bear Voice Engine principles.',
-]
-
 function buildVariationSeed() {
   return Math.random().toString(36).slice(2, 10)
 }
 
-async function fetchWingmanOption(basePrompt, { angleInstruction, isRetry, seed }) {
-  const parts = [basePrompt]
-
-  if (angleInstruction) parts.push(angleInstruction)
+function buildTwoOptionPrompt(basePrompt, { isRetry, seed }) {
+  const parts = [
+    basePrompt,
+    'Generate two distinct text message drafts for this request. Each should take a noticeably different approach — a different opening, tone, and angle from the other — while both staying grounded in the Bear Voice Engine principles.',
+  ]
 
   if (isRetry) {
     parts.push(
-      `Variation seed: ${seed}. Generate a completely different version from any previous response. Try a different opening, different tone, different angle — but always grounded in the BEAR Voice Engine principles.`
+      `Variation seed: ${seed}. Generate two completely different drafts from any previous response — different openings, different tones, different angles — but always grounded in the BEAR Voice Engine principles.`
     )
   }
 
+  parts.push('Respond with exactly this format and nothing else:\nOPTION 1:\n<first draft>\nOPTION 2:\n<second draft>')
+
+  return parts.join('\n\n')
+}
+
+function parseTwoOptions(text) {
+  const match1 = text.match(/OPTION 1:\s*([\s\S]*?)(?=OPTION 2:|$)/i)
+  const match2 = text.match(/OPTION 2:\s*([\s\S]*)$/i)
+
+  const option1 = match1?.[1]?.trim()
+  const option2 = match2?.[1]?.trim()
+
+  if (!option1 || !option2) {
+    throw new Error('Your Wingman hit a snag formatting two options. Try again.')
+  }
+
+  return [option1, option2]
+}
+
+async function fetchWingmanOptions(basePrompt, { isRetry, seed }) {
   const response = await fetch('/api/wingman', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      messages: [{ role: 'user', content: parts.join('\n\n') }],
+      messages: [{ role: 'user', content: buildTwoOptionPrompt(basePrompt, { isRetry, seed }) }],
     }),
   })
 
@@ -69,11 +85,7 @@ async function fetchWingmanOption(basePrompt, { angleInstruction, isRetry, seed 
     throw new Error(data?.error || 'Your Wingman hit a snag. Try again.')
   }
 
-  return data.text || ''
-}
-
-function emptyOption() {
-  return { text: '', loading: true, error: '', copied: false }
+  return parseTwoOptions(data.text || '')
 }
 
 function SparkleIcon() {
@@ -111,7 +123,10 @@ function BackIcon() {
 }
 
 function Draft({ script, onBack }) {
-  const [options, setOptions] = useState([emptyOption(), emptyOption()])
+  const [options, setOptions] = useState(['', ''])
+  const [copied, setCopied] = useState([false, false])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
@@ -119,27 +134,21 @@ function Draft({ script, onBack }) {
     const isRetry = attempt > 0
     const seed = buildVariationSeed()
 
-    setOptions([emptyOption(), emptyOption()])
+    setLoading(true)
+    setError('')
+    setOptions(['', ''])
+    setCopied([false, false])
 
-    OPTION_ANGLE_INSTRUCTIONS.forEach((angleInstruction, index) => {
-      fetchWingmanOption(script.prompt, { angleInstruction, isRetry, seed: `${seed}-${index}` })
-        .then((text) => {
-          if (cancelled) return
-          setOptions((prev) => {
-            const next = [...prev]
-            next[index] = { text: text.trim(), loading: false, error: '', copied: false }
-            return next
-          })
-        })
-        .catch((err) => {
-          if (cancelled) return
-          setOptions((prev) => {
-            const next = [...prev]
-            next[index] = { text: '', loading: false, error: err.message || 'Your Wingman hit a snag. Try again.', copied: false }
-            return next
-          })
-        })
-    })
+    fetchWingmanOptions(script.prompt, { isRetry, seed })
+      .then((nextOptions) => {
+        if (!cancelled) setOptions(nextOptions)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || 'Your Wingman hit a snag. Try again.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
 
     return () => {
       cancelled = true
@@ -148,16 +157,16 @@ function Draft({ script, onBack }) {
 
   const handleCopy = async (index) => {
     try {
-      await navigator.clipboard.writeText(options[index].text)
-      setOptions((prev) => {
+      await navigator.clipboard.writeText(options[index])
+      setCopied((prev) => {
         const next = [...prev]
-        next[index] = { ...next[index], copied: true }
+        next[index] = true
         return next
       })
       setTimeout(() => {
-        setOptions((prev) => {
+        setCopied((prev) => {
           const next = [...prev]
-          next[index] = { ...next[index], copied: false }
+          next[index] = false
           return next
         })
       }, 2000)
@@ -166,15 +175,13 @@ function Draft({ script, onBack }) {
     }
   }
 
-  const anyLoading = options.some((option) => option.loading)
-
   return (
     <PhoneFrame>
       <header
         className="flex shrink-0 items-center gap-3 px-4 py-3"
         style={{ backgroundColor: '#1B2A4A' }}
       >
-        <button type="button" onClick={onBack} aria-label="Back">
+        <button type="button" onClick={onBack} aria-label="Back to script menu">
           <BackIcon />
         </button>
         <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
@@ -187,67 +194,66 @@ function Draft({ script, onBack }) {
           Drafts the bones. You add the soul.
         </p>
 
-        {anyLoading && (
+        {loading && (
           <p className="mt-6 text-center text-sm font-semibold" style={{ color: '#C9A227' }}>
             Your Wingman is thinking…
           </p>
         )}
 
-        {!anyLoading && (
-          <div className="mt-4 flex flex-col gap-4">
-            {options.map((option, index) => (
-              <div key={index}>
-                <p className="mb-1.5 text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
-                  Option {index + 1}
-                </p>
-
-                {option.error ? (
-                  <div className="rounded-2xl p-5" style={{ backgroundColor: '#FCEAEA' }}>
-                    <p className="text-sm" style={{ color: '#8A1F1F' }}>{option.error}</p>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl p-5 shadow-lg" style={{ backgroundColor: '#1B2A4A' }}>
-                    <p className="text-base leading-relaxed text-white">{option.text}</p>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => handleCopy(index)}
-                  disabled={!!option.error}
-                  className="mt-2 w-full rounded-full py-2.5 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-50"
-                  style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
-                >
-                  {option.copied ? 'Copied' : `Copy Option ${index + 1}`}
-                </button>
-              </div>
-            ))}
+        {!loading && error && (
+          <div className="mt-4 rounded-2xl p-5" style={{ backgroundColor: '#FCEAEA' }}>
+            <p className="text-sm" style={{ color: '#8A1F1F' }}>{error}</p>
           </div>
         )}
 
-        {!anyLoading && (
-          <p className="mt-5 text-center text-sm font-semibold" style={{ color: '#C9A227' }}>
-            Before you send this: add the one detail only you know.
-          </p>
+        {!loading && !error && (
+          <div className="mt-4">
+            <p className="mb-1.5 text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
+              Option 1
+            </p>
+            <div className="rounded-2xl p-5 shadow-lg" style={{ backgroundColor: '#1B2A4A' }}>
+              <p className="text-base leading-relaxed text-white">{options[0]}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleCopy(0)}
+              className="mt-2 w-full rounded-full py-2.5 text-sm font-bold uppercase tracking-wide shadow-md"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+            >
+              {copied[0] ? 'Copied' : 'Copy'}
+            </button>
+
+            <div className="my-5 h-px" style={{ backgroundColor: '#C9A227' }} />
+
+            <p className="mb-1.5 text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
+              Option 2
+            </p>
+            <div className="rounded-2xl p-5 shadow-lg" style={{ backgroundColor: '#1B2A4A' }}>
+              <p className="text-base leading-relaxed text-white">{options[1]}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleCopy(1)}
+              className="mt-2 w-full rounded-full py-2.5 text-sm font-bold uppercase tracking-wide shadow-md"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+            >
+              {copied[1] ? 'Copied' : 'Copy'}
+            </button>
+
+            <p className="mt-5 text-center text-sm font-semibold" style={{ color: '#C9A227' }}>
+              Before you send this: add the one detail only you know.
+            </p>
+          </div>
         )}
 
         <button
           type="button"
           onClick={() => setAttempt((value) => value + 1)}
-          disabled={anyLoading}
+          disabled={loading}
           className="mt-5 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-50"
           style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
         >
-          Try Another Script
-        </button>
-
-        <button
-          type="button"
-          onClick={onBack}
-          className="mt-3 w-full rounded-full border py-3 text-sm font-semibold uppercase tracking-wide"
-          style={{ borderColor: '#C9A227', color: '#1B2A4A' }}
-        >
-          Choose a Different Script
+          {error ? 'Try Again' : 'Try Another Script'}
         </button>
       </main>
     </PhoneFrame>
