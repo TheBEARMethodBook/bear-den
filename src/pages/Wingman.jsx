@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
 
@@ -6,34 +6,52 @@ const SCRIPTS = [
   {
     name: 'No-agenda check-in',
     description: 'Reach out without asking for anything back.',
-    draft: "Hey — you crossed my mind today. No reason, just wanted to say hi. Hope things are good on your end.",
+    prompt: 'Write a no-agenda check-in text: reaching out to someone just because they crossed my mind, with no ask attached.',
   },
   {
     name: 'Follow up after meeting someone',
     description: 'Turn a first conversation into a real connection.',
-    draft: "Really enjoyed talking with you the other day. Would love to keep the conversation going sometime soon.",
+    prompt: 'Write a follow-up text to someone I just met and enjoyed talking with, suggesting we keep the conversation going.',
   },
   {
     name: 'Congratulations note',
     description: "Celebrate someone's win without making it about you.",
-    draft: "Just heard the news — congratulations. You earned this one. Genuinely happy for you.",
+    prompt: "Write a short congratulations text for someone's win, keeping the focus on them.",
   },
   {
     name: 'Repair and restoration text',
     description: "Reopen a relationship that's gone quiet or strained.",
-    draft: "It's been a while since we talked, and I think about that. No pressure, but I'd like to reconnect if you're open to it.",
+    prompt: "Write a low-pressure text to reconnect with someone after a relationship has gone quiet or strained.",
   },
   {
     name: 'Hard-season check-in',
     description: 'Show up for someone going through something tough.',
-    draft: "I know things have been heavy lately. Not looking for a response, just want you to know I'm thinking of you.",
+    prompt: 'Write a check-in text for someone going through a hard season, with no expectation of a reply.',
   },
   {
     name: 'Close the loop thank you',
     description: 'Acknowledge help you received, clearly and briefly.',
-    draft: "Wanted to circle back and say thank you — what you did made a real difference. Didn't want that to go unsaid.",
+    prompt: 'Write a brief, sincere thank-you text acknowledging help someone gave me.',
   },
 ]
+
+async function fetchWingmanDraft(prompt) {
+  const response = await fetch('/api/wingman', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data?.error || 'Your Wingman hit a snag. Try again.')
+  }
+
+  return data.text || ''
+}
 
 function SparkleIcon() {
   return (
@@ -70,11 +88,37 @@ function BackIcon() {
 }
 
 function Draft({ script, onBack }) {
+  const [draft, setDraft] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
+  const [attempt, setAttempt] = useState(0)
+
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    setDraft('')
+
+    fetchWingmanDraft(script.prompt)
+      .then((text) => {
+        if (!cancelled) setDraft(text.trim())
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || 'Your Wingman hit a snag. Try again.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [script, attempt])
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(script.draft)
+      await navigator.clipboard.writeText(draft)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     } catch {
@@ -101,21 +145,47 @@ function Draft({ script, onBack }) {
           Drafts the bones. You add the soul.
         </p>
 
-        <div
-          className="mt-4 rounded-2xl p-5 shadow-lg"
-          style={{ backgroundColor: '#1B2A4A' }}
-        >
-          <p className="text-base leading-relaxed text-white">{script.draft}</p>
-        </div>
+        {loading && (
+          <p className="mt-6 text-center text-sm font-semibold" style={{ color: '#C9A227' }}>
+            Your Wingman is thinking…
+          </p>
+        )}
 
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="mt-5 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
-          style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
-        >
-          {copied ? 'Copied' : 'Copy to Clipboard'}
-        </button>
+        {!loading && error && (
+          <div className="mt-4 rounded-2xl p-5" style={{ backgroundColor: '#FCEAEA' }}>
+            <p className="text-sm" style={{ color: '#8A1F1F' }}>{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div
+            className="mt-4 rounded-2xl p-5 shadow-lg"
+            style={{ backgroundColor: '#1B2A4A' }}
+          >
+            <p className="text-base leading-relaxed text-white">{draft}</p>
+          </div>
+        )}
+
+        {error ? (
+          <button
+            type="button"
+            onClick={() => setAttempt((value) => value + 1)}
+            className="mt-5 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            Try Again
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={handleCopy}
+            disabled={loading}
+            className="mt-5 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-50"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            {copied ? 'Copied' : 'Copy to Clipboard'}
+          </button>
+        )}
 
         <button
           type="button"
@@ -193,7 +263,7 @@ export default function Wingman({ onNavigate }) {
           setSelected({
             name: 'Custom request',
             description: trimmed,
-            draft: `Here's a starting point based on what you described: "${trimmed}." Keep what feels true, cut what doesn't.`,
+            prompt: `Write a text message for this situation: "${trimmed}"`,
           })
           setCustomRequest('')
         }}
