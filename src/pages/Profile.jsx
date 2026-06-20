@@ -8,7 +8,12 @@ const STATS = [
   { label: 'Relationships', value: '4' },
 ]
 
-const SETTINGS = ['Edit Profile', 'Notifications', 'Privacy & Security', 'Help & Support']
+const SETTINGS = [
+  { key: 'editProfile', label: 'Edit Profile', description: 'Update your name and details' },
+  { key: 'notifications', label: 'Notifications', description: 'Choose what The BEAR Den tells you' },
+  { key: 'privacySecurity', label: 'Privacy & Security', description: 'Password and account info' },
+  { key: 'helpSupport', label: 'Help & Support', description: 'FAQs and answers' },
+]
 
 const NOTIFICATION_TYPES = [
   {
@@ -66,10 +71,10 @@ function BackIcon() {
   )
 }
 
-function ChevronIcon() {
+function ArrowIcon() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#9CA8C2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 6l6 6-6 6" />
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#C9A227" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M5 12h14M13 6l6 6-6 6" />
     </svg>
   )
 }
@@ -486,26 +491,23 @@ export default function Profile({ onBack }) {
           ))}
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-sm">
-          {SETTINGS.map((item, index) => (
+        <div className="mt-6 flex flex-col gap-3">
+          {SETTINGS.map((item) => (
             <button
-              key={item}
+              key={item.key}
               type="button"
-              onClick={() => {
-                if (item === 'Edit Profile') setScreen('editProfile')
-                if (item === 'Notifications') setScreen('notifications')
-                if (item === 'Privacy & Security') setScreen('privacySecurity')
-                if (item === 'Help & Support') setScreen('helpSupport')
-              }}
-              className="flex w-full items-center justify-between px-4 py-3.5 text-left"
-              style={{
-                borderTop: index === 0 ? 'none' : '1px solid #F0EBE0',
-              }}
+              onClick={() => setScreen(item.key)}
+              className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
             >
-              <span className="text-sm font-medium" style={{ color: '#1B2A4A' }}>
-                {item}
-              </span>
-              <ChevronIcon />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+                  {item.label}
+                </p>
+                <p className="mt-0.5 text-xs leading-snug" style={{ color: '#9CA8C2' }}>
+                  {item.description}
+                </p>
+              </div>
+              <ArrowIcon />
             </button>
           ))}
         </div>

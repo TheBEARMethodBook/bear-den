@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
 
@@ -6,34 +6,87 @@ const SCRIPTS = [
   {
     name: 'No-agenda check-in',
     description: 'Reach out without asking for anything back.',
-    draft: "Hey — you crossed my mind today. No reason, just wanted to say hi. Hope things are good on your end.",
+    prompt: 'Write a no-agenda check-in text: reaching out to someone just because they crossed my mind, with no ask attached.',
   },
   {
     name: 'Follow up after meeting someone',
     description: 'Turn a first conversation into a real connection.',
-    draft: "Really enjoyed talking with you the other day. Would love to keep the conversation going sometime soon.",
+    prompt: 'Write a follow-up text to someone I just met and enjoyed talking with, suggesting we keep the conversation going.',
   },
   {
     name: 'Congratulations note',
     description: "Celebrate someone's win without making it about you.",
-    draft: "Just heard the news — congratulations. You earned this one. Genuinely happy for you.",
+    prompt: "Write a short congratulations text for someone's win, keeping the focus on them.",
   },
   {
     name: 'Repair and restoration text',
     description: "Reopen a relationship that's gone quiet or strained.",
-    draft: "It's been a while since we talked, and I think about that. No pressure, but I'd like to reconnect if you're open to it.",
+    prompt: "Write a low-pressure text to reconnect with someone after a relationship has gone quiet or strained.",
   },
   {
     name: 'Hard-season check-in',
     description: 'Show up for someone going through something tough.',
-    draft: "I know things have been heavy lately. Not looking for a response, just want you to know I'm thinking of you.",
+    prompt: 'Write a check-in text for someone going through a hard season, with no expectation of a reply.',
   },
   {
     name: 'Close the loop thank you',
     description: 'Acknowledge help you received, clearly and briefly.',
-    draft: "Wanted to circle back and say thank you — what you did made a real difference. Didn't want that to go unsaid.",
+    prompt: 'Write a brief, sincere thank-you text acknowledging help someone gave me.',
   },
 ]
+
+function buildVariationSeed() {
+  return Math.random().toString(36).slice(2, 10)
+}
+
+function buildTwoOptionPrompt(basePrompt, { isRetry, seed }) {
+  const parts = [
+    basePrompt,
+    'Generate two distinct text message drafts for this request. Each should take a noticeably different approach — a different opening, tone, and angle from the other — while both staying grounded in the Bear Voice Engine principles.',
+  ]
+
+  if (isRetry) {
+    parts.push(
+      `Variation seed: ${seed}. Generate two completely different drafts from any previous response — different openings, different tones, different angles — but always grounded in the BEAR Voice Engine principles.`
+    )
+  }
+
+  parts.push('Respond with exactly this format and nothing else:\nOPTION 1:\n<first draft>\nOPTION 2:\n<second draft>')
+
+  return parts.join('\n\n')
+}
+
+function parseTwoOptions(text) {
+  const match1 = text.match(/OPTION 1:\s*([\s\S]*?)(?=OPTION 2:|$)/i)
+  const match2 = text.match(/OPTION 2:\s*([\s\S]*)$/i)
+
+  const option1 = match1?.[1]?.trim()
+  const option2 = match2?.[1]?.trim()
+
+  if (!option1 || !option2) {
+    throw new Error('Your Wingman hit a snag formatting two options. Try again.')
+  }
+
+  return [option1, option2]
+}
+
+async function fetchWingmanOptions(basePrompt, { isRetry, seed }) {
+  const response = await fetch('/api/wingman', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      messages: [{ role: 'user', content: buildTwoOptionPrompt(basePrompt, { isRetry, seed }) }],
+    }),
+  })
+
+  const data = await response.json().catch(() => ({}))
+
+  if (!response.ok) {
+    throw new Error(data?.error || 'Your Wingman hit a snag. Try again.')
+  }
+
+  return parseTwoOptions(data.text || '')
+}
 
 function SparkleIcon() {
   return (
@@ -70,15 +123,55 @@ function BackIcon() {
 }
 
 function Draft({ script, onBack }) {
-  const [copied, setCopied] = useState(false)
+  const [options, setOptions] = useState(['', ''])
+  const [copied, setCopied] = useState([false, false])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [attempt, setAttempt] = useState(0)
 
-  const handleCopy = async () => {
+  useEffect(() => {
+    let cancelled = false
+    const isRetry = attempt > 0
+    const seed = buildVariationSeed()
+
+    setLoading(true)
+    setError('')
+    setOptions(['', ''])
+    setCopied([false, false])
+
+    fetchWingmanOptions(script.prompt, { isRetry, seed })
+      .then((nextOptions) => {
+        if (!cancelled) setOptions(nextOptions)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || 'Your Wingman hit a snag. Try again.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [script, attempt])
+
+  const handleCopy = async (index) => {
     try {
-      await navigator.clipboard.writeText(script.draft)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(options[index])
+      setCopied((prev) => {
+        const next = [...prev]
+        next[index] = true
+        return next
+      })
+      setTimeout(() => {
+        setCopied((prev) => {
+          const next = [...prev]
+          next[index] = false
+          return next
+        })
+      }, 2000)
     } catch {
-      setCopied(false)
+      // clipboard write failed; leave copied state untouched
     }
   }
 
@@ -88,7 +181,7 @@ function Draft({ script, onBack }) {
         className="flex shrink-0 items-center gap-3 px-4 py-3"
         style={{ backgroundColor: '#1B2A4A' }}
       >
-        <button type="button" onClick={onBack} aria-label="Back">
+        <button type="button" onClick={onBack} aria-label="Back to script menu">
           <BackIcon />
         </button>
         <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
@@ -101,29 +194,66 @@ function Draft({ script, onBack }) {
           Drafts the bones. You add the soul.
         </p>
 
-        <div
-          className="mt-4 rounded-2xl p-5 shadow-lg"
-          style={{ backgroundColor: '#1B2A4A' }}
-        >
-          <p className="text-base leading-relaxed text-white">{script.draft}</p>
-        </div>
+        {loading && (
+          <p className="mt-6 text-center text-sm font-semibold" style={{ color: '#C9A227' }}>
+            Your Wingman is thinking…
+          </p>
+        )}
+
+        {!loading && error && (
+          <div className="mt-4 rounded-2xl p-5" style={{ backgroundColor: '#FCEAEA' }}>
+            <p className="text-sm" style={{ color: '#8A1F1F' }}>{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div className="mt-4">
+            <p className="mb-1.5 text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
+              Option 1
+            </p>
+            <div className="rounded-2xl p-5 shadow-lg" style={{ backgroundColor: '#1B2A4A' }}>
+              <p className="text-base leading-relaxed text-white">{options[0]}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleCopy(0)}
+              className="mt-2 w-full rounded-full py-2.5 text-sm font-bold uppercase tracking-wide shadow-md"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+            >
+              {copied[0] ? 'Copied' : 'Copy'}
+            </button>
+
+            <div className="my-5 h-px" style={{ backgroundColor: '#C9A227' }} />
+
+            <p className="mb-1.5 text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
+              Option 2
+            </p>
+            <div className="rounded-2xl p-5 shadow-lg" style={{ backgroundColor: '#1B2A4A' }}>
+              <p className="text-base leading-relaxed text-white">{options[1]}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleCopy(1)}
+              className="mt-2 w-full rounded-full py-2.5 text-sm font-bold uppercase tracking-wide shadow-md"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+            >
+              {copied[1] ? 'Copied' : 'Copy'}
+            </button>
+
+            <p className="mt-5 text-center text-sm font-semibold" style={{ color: '#C9A227' }}>
+              Before you send this: add the one detail only you know.
+            </p>
+          </div>
+        )}
 
         <button
           type="button"
-          onClick={handleCopy}
-          className="mt-5 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+          onClick={() => setAttempt((value) => value + 1)}
+          disabled={loading}
+          className="mt-5 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-50"
           style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
         >
-          {copied ? 'Copied' : 'Copy to Clipboard'}
-        </button>
-
-        <button
-          type="button"
-          onClick={onBack}
-          className="mt-3 w-full rounded-full border py-3 text-sm font-semibold uppercase tracking-wide"
-          style={{ borderColor: '#C9A227', color: '#1B2A4A' }}
-        >
-          Try Another Script
+          {error ? 'Try Again' : 'Try Another Script'}
         </button>
       </main>
     </PhoneFrame>
@@ -193,7 +323,7 @@ export default function Wingman({ onNavigate }) {
           setSelected({
             name: 'Custom request',
             description: trimmed,
-            draft: `Here's a starting point based on what you described: "${trimmed}." Keep what feels true, cut what doesn't.`,
+            prompt: `Write a text message for this situation: "${trimmed}"`,
           })
           setCustomRequest('')
         }}
