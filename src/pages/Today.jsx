@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
+import { TODAY_ACTION_TEXT, getStreakStatus, recordDailyAction } from '../lib/dailyActions'
 
 function getGreetingName(user) {
   const fullName = user?.user_metadata?.full_name
@@ -40,6 +41,61 @@ function BackIcon() {
   )
 }
 
+function SparkleIcon({ size = 20 }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="#C9A227">
+      <path d="M12 2l1.8 5.6L19 9.5l-5.2 1.9L12 17l-1.8-5.6L5 9.5l5.2-1.9Z" />
+      <path d="M19 14l.9 2.8L22.5 18l-2.6.9L19 21.5l-.9-2.6L15.5 18l2.6-1.2Z" />
+    </svg>
+  )
+}
+
+function celebrationSubMessage({ streak, isFirstEver }) {
+  if (isFirstEver) {
+    return "You just did what most people never do. You reached out with nothing to gain."
+  }
+  if (streak === 7) {
+    return "Seven days of intentional connection. Your relationships feel the difference."
+  }
+  if (streak === 30) {
+    return "Thirty days. You didn't just read about this. You lived it."
+  }
+  return null
+}
+
+function CelebrationOverlay({ streak, isFirstEver, onDismiss }) {
+  const subMessage = celebrationSubMessage({ streak, isFirstEver })
+
+  return (
+    <div
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8 text-center"
+      style={{ backgroundColor: '#1B2A4A' }}
+    >
+      <SparkleIcon size={56} />
+      <p className="mt-6 text-7xl font-bold leading-none" style={{ color: '#C9A227' }}>
+        {streak}
+      </p>
+      <p className="mt-2 text-xs font-bold uppercase tracking-widest" style={{ color: '#C9A227' }}>
+        {streak === 1 ? 'Day Streak' : 'Day Streak'}
+      </p>
+      <p className="mt-8 text-xl font-bold text-white">You're becoming irreplaceable.</p>
+      {subMessage && (
+        <p className="mt-4 text-base leading-relaxed" style={{ color: '#FAF6EE' }}>
+          {subMessage}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={onDismiss}
+        className="mt-10 w-full max-w-xs rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+        style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+      >
+        Dismiss
+      </button>
+    </div>
+  )
+}
+
 const REASONS = [
   {
     title: 'Low stakes, real connection',
@@ -59,8 +115,46 @@ export default function Today({ onNavigate }) {
   const { user } = useAuth()
   const [actionDone, setActionDone] = useState(false)
   const [showWhy, setShowWhy] = useState(false)
+  const [streak, setStreak] = useState(0)
+  const [marking, setMarking] = useState(false)
+  const [markError, setMarkError] = useState('')
+  const [celebration, setCelebration] = useState(null)
 
   const name = getGreetingName(user)
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+
+    getStreakStatus(user.id)
+      .then(({ streak: currentStreak, completedToday }) => {
+        if (cancelled) return
+        setStreak(currentStreak)
+        setActionDone(completedToday)
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  const handleMarkDone = async () => {
+    if (!user || actionDone || marking) return
+    setMarking(true)
+    setMarkError('')
+
+    try {
+      const { streak: newStreak, isFirstEver } = await recordDailyAction(user.id)
+      setStreak(newStreak)
+      setActionDone(true)
+      setCelebration({ streak: newStreak, isFirstEver })
+    } catch (err) {
+      setMarkError(err.message || 'Could not save your progress. Try again.')
+    } finally {
+      setMarking(false)
+    }
+  }
 
   if (showWhy) {
     return (
@@ -131,7 +225,7 @@ export default function Today({ onNavigate }) {
           >
             <FlameIcon color="#1B2A4A" />
             <span className="text-xs font-bold" style={{ color: '#1B2A4A' }}>
-              12 days
+              {streak} {streak === 1 ? 'day' : 'days'}
             </span>
           </div>
           <button
@@ -162,7 +256,7 @@ export default function Today({ onNavigate }) {
             Today's Bear Action
           </span>
           <p className="mt-3 text-base font-medium leading-snug text-white">
-            Call someone you thought of recently. No agenda. Just say hello.
+            {TODAY_ACTION_TEXT}
           </p>
           <p className="mt-2 text-sm" style={{ color: '#9CA8C2' }}>
             From Chapter 8
@@ -171,12 +265,12 @@ export default function Today({ onNavigate }) {
           <div className="mt-5 flex flex-col gap-3">
             <button
               type="button"
-              onClick={() => setActionDone(true)}
-              disabled={actionDone}
+              onClick={handleMarkDone}
+              disabled={actionDone || marking}
               className="rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md transition-opacity disabled:opacity-60"
               style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
             >
-              {actionDone ? 'Done for today' : 'Mark done'}
+              {actionDone ? 'Done for today' : marking ? 'Saving…' : 'Mark done'}
             </button>
             <button
               type="button"
@@ -187,6 +281,12 @@ export default function Today({ onNavigate }) {
               Why this works
             </button>
           </div>
+
+          {markError && (
+            <p className="mt-3 text-sm font-medium" style={{ color: '#F2B8B5' }}>
+              {markError}
+            </p>
+          )}
         </div>
 
         <section className="mt-7">
@@ -223,6 +323,14 @@ export default function Today({ onNavigate }) {
       </main>
 
       <BottomNav activeTab="today" onChange={onNavigate} />
+
+      {celebration && (
+        <CelebrationOverlay
+          streak={celebration.streak}
+          isFirstEver={celebration.isFirstEver}
+          onDismiss={() => setCelebration(null)}
+        />
+      )}
     </PhoneFrame>
   )
 }
