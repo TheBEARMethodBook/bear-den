@@ -1,15 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useAuth } from '../contexts/useAuth'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
+import { STAGE_DOT, fetchPeople } from '../lib/people'
 
 const FILTERS = ['All', 'Building', 'Engaging', 'Strong', 'Restore']
-
-const STAGE_DOT = {
-  Building: '#D9912E',
-  Engaging: '#3F8F5C',
-  Strong: '#3F8F5C',
-  Restore: '#B3261E',
-}
 
 const STAGE_NEXT = {
   Restore: 'Building',
@@ -17,40 +12,6 @@ const STAGE_NEXT = {
   Engaging: 'Strong',
   Strong: 'Strong',
 }
-
-const INITIAL_PEOPLE = [
-  {
-    name: 'Sarah Chen',
-    relationship: 'Sister',
-    lastContacted: '2 days ago',
-    stage: 'Strong',
-    dot: '#3F8F5C',
-    history: [
-      { date: 'Jun 16', note: 'Grabbed coffee and talked for an hour.' },
-      { date: 'May 30', note: 'Called on her birthday.' },
-    ],
-  },
-  {
-    name: 'Marcus Webb',
-    relationship: 'College friend',
-    lastContacted: '3 weeks ago',
-    stage: 'Building',
-    dot: '#D9912E',
-    history: [
-      { date: 'May 28', note: 'Texted to see how the new job was going.' },
-    ],
-  },
-  {
-    name: 'James Patel',
-    relationship: 'Mentor',
-    lastContacted: '2 months ago',
-    stage: 'Restore',
-    dot: '#B3261E',
-    history: [
-      { date: 'Apr 14', note: 'Sent a thank-you note after his advice helped a lot.' },
-    ],
-  },
-]
 
 const INITIAL_BENCH = [
   'Diane Brooks',
@@ -91,110 +52,6 @@ function BackIcon() {
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M15 18l-6-6 6-6" />
     </svg>
-  )
-}
-
-function AddPerson({ onBack, onSave }) {
-  const [name, setName] = useState('')
-  const [relationship, setRelationship] = useState('')
-  const [stage, setStage] = useState('Building')
-
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    const trimmedName = name.trim()
-    if (!trimmedName) return
-
-    onSave({
-      name: trimmedName,
-      relationship: relationship.trim() || 'Contact',
-      lastContacted: 'Just now',
-      stage,
-      dot: STAGE_DOT[stage],
-    })
-  }
-
-  return (
-    <PhoneFrame>
-      <header
-        className="flex shrink-0 items-center gap-3 px-4 py-3"
-        style={{ backgroundColor: '#1B2A4A' }}
-      >
-        <button type="button" onClick={onBack} aria-label="Back">
-          <BackIcon />
-        </button>
-        <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
-          Add Person
-        </span>
-      </header>
-
-      <main className="flex-1 overflow-y-auto px-4 py-6">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-              Name
-            </span>
-            <input
-              type="text"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="Their name"
-              className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
-              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
-              autoFocus
-            />
-          </label>
-
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-              Relationship
-            </span>
-            <input
-              type="text"
-              value={relationship}
-              onChange={(event) => setRelationship(event.target.value)}
-              placeholder="e.g. Sister, Mentor, Old friend"
-              className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
-              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
-            />
-          </label>
-
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-              Stage
-            </span>
-            <div className="flex gap-2">
-              {FILTERS.filter((f) => f !== 'All').map((option) => {
-                const isActive = stage === option
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setStage(option)}
-                    className="flex-1 rounded-full px-2 py-2 text-xs font-semibold uppercase tracking-wide"
-                    style={
-                      isActive
-                        ? { backgroundColor: '#C9A227', color: '#1B2A4A' }
-                        : { backgroundColor: '#FFFFFF', color: '#1B2A4A', border: '1px solid #1B2A4A' }
-                    }
-                  >
-                    {option}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={!name.trim()}
-            className="mt-2 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
-            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
-          >
-            Add to Vault
-          </button>
-        </form>
-      </main>
-    </PhoneFrame>
   )
 }
 
@@ -240,6 +97,54 @@ function PersonDetail({ person, onBack, onLogInteraction }) {
         >
           Log Interaction
         </button>
+
+        {(person.phone || person.email) && (
+          <div className="mt-5 flex flex-col gap-1 rounded-xl bg-white p-4 shadow-sm">
+            {person.phone && (
+              <p className="text-sm" style={{ color: '#2E2E2E' }}>
+                {person.phone}
+              </p>
+            )}
+            {person.email && (
+              <p className="text-sm" style={{ color: '#2E2E2E' }}>
+                {person.email}
+              </p>
+            )}
+          </div>
+        )}
+
+        {person.howWeMet && (
+          <div className="mt-3">
+            <h2 className="text-base font-bold" style={{ color: '#1B2A4A' }}>
+              How we met
+            </h2>
+            <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
+              {person.howWeMet}
+            </p>
+          </div>
+        )}
+
+        {person.details && (
+          <div className="mt-4">
+            <h2 className="text-base font-bold" style={{ color: '#1B2A4A' }}>
+              Details that matter
+            </h2>
+            <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
+              {person.details}
+            </p>
+          </div>
+        )}
+
+        {person.importantDates && (
+          <div className="mt-4">
+            <h2 className="text-base font-bold" style={{ color: '#1B2A4A' }}>
+              Important dates
+            </h2>
+            <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
+              {person.importantDates}
+            </p>
+          </div>
+        )}
 
         <h2 className="mt-7 text-base font-bold" style={{ color: '#1B2A4A' }}>
           History
@@ -421,14 +326,36 @@ function Bench({ contacts, onBack, onSortContact }) {
 }
 
 export default function Vault({ onNavigate }) {
-  const [people, setPeople] = useState(INITIAL_PEOPLE)
+  const { user } = useAuth()
+  const [people, setPeople] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState('All')
-  const [isAdding, setIsAdding] = useState(false)
-  const [selectedName, setSelectedName] = useState(null)
+  const [selectedId, setSelectedId] = useState(null)
   const [bench, setBench] = useState(INITIAL_BENCH)
   const [isBenchOpen, setIsBenchOpen] = useState(false)
   const [sortingName, setSortingName] = useState(null)
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+
+    fetchPeople(user.id)
+      .then((rows) => {
+        if (!cancelled) setPeople(rows)
+      })
+      .catch((err) => {
+        if (!cancelled) setLoadError(err.message || 'Could not load your Vault.')
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   const filteredPeople = people.filter((person) => {
     const matchesFilter = activeFilter === 'All' || person.stage === activeFilter
@@ -436,29 +363,17 @@ export default function Vault({ onNavigate }) {
     return matchesFilter && matchesQuery
   })
 
-  const selectedPerson = people.find((person) => person.name === selectedName)
-
-  if (isAdding) {
-    return (
-      <AddPerson
-        onBack={() => setIsAdding(false)}
-        onSave={(person) => {
-          setPeople((prev) => [{ ...person, history: [] }, ...prev])
-          setIsAdding(false)
-        }}
-      />
-    )
-  }
+  const selectedPerson = people.find((person) => (person.id ?? person.name) === selectedId)
 
   if (selectedPerson) {
     return (
       <PersonDetail
         person={selectedPerson}
-        onBack={() => setSelectedName(null)}
+        onBack={() => setSelectedId(null)}
         onLogInteraction={() => {
           setPeople((prev) =>
             prev.map((person) => {
-              if (person.name !== selectedName) return person
+              if ((person.id ?? person.name) !== selectedId) return person
               const nextStage = STAGE_NEXT[person.stage]
               return {
                 ...person,
@@ -509,7 +424,7 @@ export default function Vault({ onNavigate }) {
         </span>
         <button
           type="button"
-          onClick={() => setIsAdding(true)}
+          onClick={() => onNavigate('addPerson')}
           className="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide shadow-md"
           style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
         >
@@ -555,38 +470,52 @@ export default function Vault({ onNavigate }) {
         </div>
 
         <div className="mt-5 flex flex-col gap-3">
-          {filteredPeople.map((person) => (
-            <button
-              key={person.name}
-              type="button"
-              onClick={() => setSelectedName(person.name)}
-              className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
-            >
-              <div
-                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold"
-                style={{ backgroundColor: '#1B2A4A', color: '#C9A227' }}
+          {isLoading && (
+            <p className="py-6 text-center text-sm" style={{ color: '#9CA8C2' }}>
+              Loading your Vault…
+            </p>
+          )}
+
+          {!isLoading && loadError && (
+            <p className="py-6 text-center text-sm" style={{ color: '#B3261E' }}>
+              {loadError}
+            </p>
+          )}
+
+          {!isLoading &&
+            !loadError &&
+            filteredPeople.map((person) => (
+              <button
+                key={person.id ?? person.name}
+                type="button"
+                onClick={() => setSelectedId(person.id ?? person.name)}
+                className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
               >
-                {getInitials(person.name)}
-              </div>
+                <div
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                  style={{ backgroundColor: '#1B2A4A', color: '#C9A227' }}
+                >
+                  {getInitials(person.name)}
+                </div>
 
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-                  {person.name}
-                </p>
-                <p className="text-xs" style={{ color: '#9CA8C2' }}>
-                  {person.relationship} · {person.lastContacted}
-                </p>
-              </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+                    {person.name}
+                  </p>
+                  <p className="text-xs" style={{ color: '#9CA8C2' }}>
+                    {person.relationship} · {person.lastContacted}
+                  </p>
+                </div>
 
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ backgroundColor: person.dot }}
-                title={person.stage}
-              />
-            </button>
-          ))}
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: person.dot }}
+                  title={person.stage}
+                />
+              </button>
+            ))}
 
-          {filteredPeople.length === 0 && (
+          {!isLoading && !loadError && filteredPeople.length === 0 && (
             <p className="py-6 text-center text-sm" style={{ color: '#9CA8C2' }}>
               No one matches that search yet.
             </p>

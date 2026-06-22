@@ -4,6 +4,7 @@ import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
 import Today from './pages/Today'
 import Vault from './pages/Vault'
+import AddPerson from './pages/AddPerson'
 import Garden from './pages/Garden'
 import Wingman from './pages/Wingman'
 import Profile from './pages/Profile'
@@ -49,6 +50,10 @@ function App() {
 
   if (activeTab === 'vault') {
     return <Vault onNavigate={setActiveTab} />
+  }
+
+  if (activeTab === 'addPerson') {
+    return <AddPerson onNavigate={setActiveTab} />
   }
 
   if (activeTab === 'garden') {
