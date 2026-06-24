@@ -13,10 +13,13 @@ function BackIcon() {
 
 function formatDate(value) {
   if (!value) return ''
-  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  const date = dateOnlyMatch
-    ? new Date(Number(dateOnlyMatch[1]), Number(dateOnlyMatch[2]) - 1, Number(dateOnlyMatch[3]))
-    : new Date(value)
+  // interacted_at is a calendar date with no meaningful time component, so pull the
+  // Y/M/D digits straight off the string instead of letting the Date constructor treat
+  // a UTC-midnight timestamp as an instant and shift it to the previous local day.
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(value)
+  if (!dateMatch) return ''
+  const [, year, month, day] = dateMatch
+  const date = new Date(Number(year), Number(month) - 1, Number(day))
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
