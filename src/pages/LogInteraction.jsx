@@ -12,8 +12,10 @@ function getSpeechRecognition() {
 
 function todayISODate() {
   const now = new Date()
-  const offset = now.getTimezoneOffset()
-  return new Date(now.getTime() - offset * 60000).toISOString().slice(0, 10)
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function BackIcon() {
