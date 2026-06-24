@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
-import { TODAY_ACTION_TEXT, getStreakStatus, recordDailyAction } from '../lib/dailyActions'
+import { getActionForDay, getStreakStatus, recordDailyAction } from '../lib/dailyActions'
 
 function getGreetingName(user) {
   const fullName = user?.user_metadata?.full_name
@@ -96,21 +96,6 @@ function CelebrationOverlay({ streak, isFirstEver, onDismiss }) {
   )
 }
 
-const REASONS = [
-  {
-    title: 'Low stakes, real connection',
-    body: 'A call with no agenda removes the pressure to perform. That\'s when people actually feel seen.',
-  },
-  {
-    title: 'Reciprocity isn\'t the point',
-    body: 'You\'re not calling to get something back. That\'s what makes the gesture land — and what makes you memorable.',
-  },
-  {
-    title: 'Small actions compound',
-    body: 'One five-minute call rarely changes a relationship. Twelve of them, spread over months, rebuild it.',
-  },
-]
-
 export default function Today({ onNavigate }) {
   const { user } = useAuth()
   const [actionDone, setActionDone] = useState(false)
@@ -121,6 +106,8 @@ export default function Today({ onNavigate }) {
   const [celebration, setCelebration] = useState(null)
 
   const name = getGreetingName(user)
+  const dayNumber = streak + (actionDone ? 0 : 1)
+  const todaysAction = getActionForDay(dayNumber)
 
   useEffect(() => {
     if (!user) return
@@ -145,7 +132,7 @@ export default function Today({ onNavigate }) {
     setMarkError('')
 
     try {
-      const { streak: newStreak, isFirstEver } = await recordDailyAction(user.id)
+      const { streak: newStreak, isFirstEver } = await recordDailyAction(user.id, todaysAction.action)
       setStreak(newStreak)
       setActionDone(true)
       setCelebration({ streak: newStreak, isFirstEver })
@@ -172,26 +159,24 @@ export default function Today({ onNavigate }) {
         </header>
 
         <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
-          <p className="text-sm leading-relaxed" style={{ color: '#2E2E2E' }}>
-            Today's action is small on purpose. From Chapter 8: the goal isn't the call itself, it's
-            what calling without an agenda teaches you about showing up for people.
+          <span
+            className="text-xs font-bold uppercase tracking-widest"
+            style={{ color: '#C9A227' }}
+          >
+            Week {todaysAction.week} · {todaysAction.theme}
+          </span>
+
+          <p className="mt-3 text-sm leading-relaxed" style={{ color: '#2E2E2E' }}>
+            {todaysAction.why_it_works}
           </p>
 
-          <div className="mt-5 flex flex-col gap-3">
-            {REASONS.map((reason) => (
-              <div
-                key={reason.title}
-                className="rounded-xl border-l-4 bg-white p-4 shadow-sm"
-                style={{ borderColor: '#C9A227' }}
-              >
-                <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-                  {reason.title}
-                </p>
-                <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
-                  {reason.body}
-                </p>
-              </div>
-            ))}
+          <div
+            className="mt-5 rounded-xl border-l-4 bg-white p-4 shadow-sm"
+            style={{ borderColor: '#C9A227' }}
+          >
+            <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+              {todaysAction.chapter}
+            </p>
           </div>
 
           <button
@@ -253,13 +238,13 @@ export default function Today({ onNavigate }) {
             className="text-xs font-bold uppercase tracking-widest"
             style={{ color: '#C9A227' }}
           >
-            Today's Bear Action
+            Day {dayNumber} · Week {todaysAction.week} · {todaysAction.theme}
           </span>
           <p className="mt-3 text-base font-medium leading-snug text-white">
-            {TODAY_ACTION_TEXT}
+            {todaysAction.action}
           </p>
           <p className="mt-2 text-sm" style={{ color: '#9CA8C2' }}>
-            From Chapter 8
+            From {todaysAction.chapter}
           </p>
 
           <div className="mt-5 flex flex-col gap-3">
