@@ -92,6 +92,28 @@ export async function insertPerson(userId, person) {
   return mapPersonRow(data)
 }
 
+export async function updatePerson(personId, person) {
+  const { data, error } = await supabase
+    .from('people')
+    .update({
+      name: person.name.trim(),
+      relationship_type: person.relationshipType || null,
+      bear_stage: BEAR_STAGES.includes(person.bearStage) ? person.bearStage : 'Building',
+      phone: person.phone?.trim() || null,
+      email: person.email?.trim() || null,
+      how_we_met: person.howWeMet?.trim() || null,
+      details: person.details?.trim() || null,
+      important_dates: person.importantDates?.trim() || null,
+    })
+    .eq('id', personId)
+    .select()
+    .single()
+
+  if (error) throw error
+
+  return mapPersonRow(data)
+}
+
 export async function updateLastContacted(personId) {
   const { error } = await supabase
     .from('people')
