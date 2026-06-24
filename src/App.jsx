@@ -44,9 +44,10 @@ function App() {
     }
   }, [user])
 
-  // Dev-only escape hatch so the Pro gate can be tested without waiting out a real 30-day trial.
+  // TEMPORARY testing escape hatch so the Pro gate can be exercised without waiting out a real
+  // 30-day trial, in any environment including production. Remove this flag before final launch.
   // Enable from the browser console: localStorage.setItem('bearden_dev_force_trial_expired', 'true')
-  const debugForceExpired = import.meta.env.DEV && localStorage.getItem('bearden_dev_force_trial_expired') === 'true'
+  const debugForceExpired = localStorage.getItem('bearden_dev_force_trial_expired') === 'true'
   const needsProAccess =
     debugForceExpired || (subscription.loaded && !subscription.isPro && !subscription.trialActive)
 
