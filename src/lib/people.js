@@ -70,6 +70,22 @@ export async function fetchPeople(userId) {
   return (data || []).map(mapPersonRow)
 }
 
+export async function fetchReachOutNudges(userId, limit = 3) {
+  const { data, error } = await supabase
+    .from('people')
+    .select('*')
+    .eq('user_id', userId)
+    .order('last_contacted', { ascending: true, nullsFirst: true })
+    .limit(limit)
+
+  if (error) throw error
+
+  return (data || []).map((row) => ({
+    ...mapPersonRow(row),
+    lastContactedAt: row.last_contacted,
+  }))
+}
+
 export async function insertPerson(userId, person) {
   const { data, error } = await supabase
     .from('people')

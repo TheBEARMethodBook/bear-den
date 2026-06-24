@@ -4,7 +4,23 @@ import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
 import UpgradeBanner from '../components/UpgradeBanner'
 import { getActionForDay, getStreakStatus, recordDailyAction } from '../lib/dailyActions'
+import { fetchReachOutNudges } from '../lib/people'
 import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
+
+const RECENTLY_CONTACTED_DAYS = 7
+
+function daysSinceContact(value) {
+  if (!value) return null
+  return Math.floor((Date.now() - new Date(value).getTime()) / 86400000)
+}
+
+function formatDaysSinceContact(value) {
+  const days = daysSinceContact(value)
+  if (days === null) return 'Never contacted'
+  if (days <= 0) return 'Today'
+  if (days === 1) return '1 day ago'
+  return `${days} days ago`
+}
 
 function getGreetingName(user) {
   const fullName = user?.user_metadata?.full_name
@@ -107,6 +123,9 @@ export default function Today({ onNavigate }) {
   const [markError, setMarkError] = useState('')
   const [celebration, setCelebration] = useState(null)
   const [showWhyUpgradeBanner, setShowWhyUpgradeBanner] = useState(false)
+  const [nudges, setNudges] = useState([])
+  const [nudgesLoading, setNudgesLoading] = useState(true)
+  const [nudgesError, setNudgesError] = useState('')
   const proAccess = useProAccess(user)
 
   const name = getGreetingName(user)
@@ -129,6 +148,35 @@ export default function Today({ onNavigate }) {
       cancelled = true
     }
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+
+    fetchReachOutNudges(user.id)
+      .then((rows) => {
+        if (!cancelled) {
+          setNudges(rows)
+          setNudgesError('')
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setNudgesError(err.message || 'Could not load your Vault.')
+      })
+      .finally(() => {
+        if (!cancelled) setNudgesLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  // nudges is sorted longest-since-contact first (nulls first), so checking just the
+  // first entry tells us whether everyone is within the recently-contacted window.
+  const mostOverdueDays = daysSinceContact(nudges[0]?.lastContactedAt)
+  const everyoneRecentlyContacted =
+    nudges.length > 0 && mostOverdueDays !== null && mostOverdueDays <= RECENTLY_CONTACTED_DAYS
 
   const handleWhyThisWorksTap = () => {
     if (proAccess.needsProAccess) {
@@ -298,33 +346,64 @@ export default function Today({ onNavigate }) {
 
         <section className="mt-7">
           <h2 className="text-base font-bold" style={{ color: '#1B2A4A' }}>
-            Your den is nudging you
+            Who's on your mind today?
           </h2>
 
           <div className="mt-3 flex flex-col gap-3">
-            <div
-              className="rounded-xl border-l-4 bg-white p-4 shadow-sm"
-              style={{ borderColor: '#D9912E' }}
-            >
-              <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-                Three days since your last Vault entry
+            {nudgesLoading && (
+              <p className="text-sm" style={{ color: '#9CA8C2' }}>
+                Loading…
               </p>
-              <p className="mt-1 text-sm" style={{ color: '#2E2E2E' }}>
-                A quick reflection keeps your momentum visible.
-              </p>
-            </div>
+            )}
 
-            <div
-              className="rounded-xl border-l-4 bg-white p-4 shadow-sm"
-              style={{ borderColor: '#3F8F5C' }}
-            >
-              <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-                Your Garden is ready to check in
+            {!nudgesLoading && nudgesError && (
+              <p className="text-sm" style={{ color: '#B3261E' }}>
+                {nudgesError}
               </p>
-              <p className="mt-1 text-sm" style={{ color: '#2E2E2E' }}>
-                Two relationships are due for a small act of care.
+            )}
+
+            {!nudgesLoading && !nudgesError && nudges.length === 0 && (
+              <p className="text-sm leading-relaxed" style={{ color: '#9CA8C2' }}>
+                Add someone to your Vault and we'll remind you to stay connected.
               </p>
-            </div>
+            )}
+
+            {!nudgesLoading && !nudgesError && nudges.length > 0 && everyoneRecentlyContacted && (
+              <p className="text-sm leading-relaxed" style={{ color: '#9CA8C2' }}>
+                You're staying connected. Keep it up.
+              </p>
+            )}
+
+            {!nudgesLoading &&
+              !nudgesError &&
+              nudges.length > 0 &&
+              !everyoneRecentlyContacted &&
+              nudges.map((person) => (
+                <button
+                  key={person.id}
+                  type="button"
+                  onClick={() => onNavigate('personProfile', person)}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold" style={{ color: '#C9A227' }}>
+                      {person.name}
+                    </p>
+                    <p className="mt-0.5 text-xs" style={{ color: '#9CA8C2' }}>
+                      {person.relationship}
+                    </p>
+                    <p className="mt-1 text-xs font-medium" style={{ color: '#2E2E2E' }}>
+                      {formatDaysSinceContact(person.lastContactedAt)}
+                    </p>
+                  </div>
+                  <span
+                    className="shrink-0 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide"
+                    style={{ backgroundColor: '#FAF6EE', color: '#1B2A4A', border: '1px solid #1B2A4A' }}
+                  >
+                    Reach out
+                  </span>
+                </button>
+              ))}
           </div>
         </section>
       </main>
