@@ -1,34 +1,38 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
 import UpgradeBanner from '../components/UpgradeBanner'
+import { fetchGardenPeople } from '../lib/people'
 import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
 
-const STAGE_COLOR = {
-  strongest: '#C9A227',
-  healthy: '#3F8F5C',
-  fading: '#D9912E',
-  needsWater: '#B3261E',
+const THRIVING_MAX_DAYS = 14
+const NEEDS_WATER_MAX_DAYS = 30
+
+const HEALTH_TIERS = {
+  wilting: { label: 'Wilting', color: '#C75146', rank: 0 },
+  needsWater: { label: 'Needs Water', color: '#D98E32', rank: 1 },
+  thriving: { label: 'Thriving', color: '#2E7D5B', rank: 2 },
 }
 
-const STAGE_UP = {
-  needsWater: 'fading',
-  fading: 'healthy',
-  healthy: 'strongest',
-  strongest: 'strongest',
+function daysSinceContact(value) {
+  if (!value) return null
+  return Math.floor((Date.now() - new Date(value).getTime()) / 86400000)
 }
 
-const INITIAL_PLANTS = [
-  { name: 'Sarah Chen', stage: 'strongest' },
-  { name: 'Marcus Webb', stage: 'fading' },
-  { name: 'Priya Desai', stage: 'healthy' },
-  { name: 'Liam Foster', stage: 'strongest' },
-  { name: 'Nora Kim', stage: 'needsWater' },
-  { name: 'Derek Hayes', stage: 'healthy' },
-  { name: 'Ava Brooks', stage: 'fading' },
-  { name: 'Connor Wells', stage: 'strongest' },
-]
+function getHealthTierKey(days) {
+  if (days === null) return 'wilting'
+  if (days <= THRIVING_MAX_DAYS) return 'thriving'
+  if (days <= NEEDS_WATER_MAX_DAYS) return 'needsWater'
+  return 'wilting'
+}
+
+function formatDaysSinceContact(days) {
+  if (days === null) return 'Never contacted'
+  if (days <= 0) return 'Today'
+  if (days === 1) return '1 day ago'
+  return `${days} days ago`
+}
 
 function FlameIcon({ color }) {
   return (
@@ -40,7 +44,7 @@ function FlameIcon({ color }) {
 
 function FlowerIcon({ color }) {
   return (
-    <svg viewBox="0 0 24 24" width="30" height="30" fill="none">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none">
       <circle cx="12" cy="8" r="2.4" fill={color} />
       <circle cx="8" cy="10" r="2.4" fill={color} />
       <circle cx="16" cy="10" r="2.4" fill={color} />
@@ -52,18 +56,9 @@ function FlowerIcon({ color }) {
   )
 }
 
-function TreeIcon({ color }) {
-  return (
-    <svg viewBox="0 0 24 24" width="30" height="30" fill="none">
-      <path d="M12 3 6 11h3.2L5 18h14l-4.2-7H18z" fill={color} />
-      <path d="M12 18v3" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 function PlantIcon({ color }) {
   return (
-    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 20V10" />
       <path d="M12 12c0-4-3-5-6-5 0 4 2 6 6 5Z" fill={color} stroke="none" />
       <path d="M12 9c0-3.5 2.5-4.5 5-4.5 0 3.5-1.5 5.5-5 4.5Z" fill={color} stroke="none" />
@@ -73,7 +68,7 @@ function PlantIcon({ color }) {
 
 function SeedlingIcon({ color }) {
   return (
-    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M12 20v-7" />
       <path d="M12 13c0-3 -2-4 -4.5-4 0 3 1.5 4.5 4.5 4Z" fill={color} stroke="none" />
       <path d="M12 13c0-2.5 1.5-3.5 3.5-3.5 0 2.5 -1.2 3.7 -3.5 3.5Z" fill={color} stroke="none" />
@@ -81,35 +76,70 @@ function SeedlingIcon({ color }) {
   )
 }
 
-function PlantGraphic({ stage }) {
-  const color = STAGE_COLOR[stage]
-  if (stage === 'strongest') return <FlowerIcon color={color} />
-  if (stage === 'healthy') return <TreeIcon color={color} />
-  if (stage === 'fading') return <PlantIcon color={color} />
+function HealthIcon({ tierKey, color }) {
+  if (tierKey === 'thriving') return <FlowerIcon color={color} />
+  if (tierKey === 'needsWater') return <PlantIcon color={color} />
   return <SeedlingIcon color={color} />
 }
 
 export default function Garden({ onNavigate }) {
   const { user } = useAuth()
-  const [plants, setPlants] = useState(INITIAL_PLANTS)
+  const [people, setPeople] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [showUpgradeBanner, setShowUpgradeBanner] = useState(false)
   const proAccess = useProAccess(user)
 
-  const waterOne = () => {
-    setPlants((prev) => {
-      const targetIndex = prev.findIndex((p) => p.stage === 'needsWater' || p.stage === 'fading')
-      if (targetIndex === -1) return prev
-      return prev.map((plant, index) =>
-        index === targetIndex ? { ...plant, stage: STAGE_UP[plant.stage] } : plant
-      )
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+
+    fetchGardenPeople(user.id)
+      .then((rows) => {
+        if (!cancelled) {
+          setPeople(rows)
+          setLoadError('')
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setLoadError(err.message || 'Could not load your garden.')
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  const gardenEntries = people
+    .map((person) => {
+      const days = daysSinceContact(person.lastContactedAt)
+      return { person, days, tierKey: getHealthTierKey(days) }
     })
-  }
+    .sort((a, b) => {
+      const rankDiff = HEALTH_TIERS[a.tierKey].rank - HEALTH_TIERS[b.tierKey].rank
+      if (rankDiff !== 0) return rankDiff
+      const aDays = a.days === null ? Infinity : a.days
+      const bDays = b.days === null ? Infinity : b.days
+      return bDays - aDays
+    })
+
+  const tierCounts = gardenEntries.reduce(
+    (counts, entry) => ({ ...counts, [entry.tierKey]: counts[entry.tierKey] + 1 }),
+    { thriving: 0, needsWater: 0, wilting: 0 }
+  )
+
+  const mostWiltingEntry = gardenEntries[0]
 
   const handleWaterTap = () => {
     if (proAccess.needsProAccess) {
       setShowUpgradeBanner(true)
-    } else {
-      waterOne()
+      return
+    }
+    if (mostWiltingEntry) {
+      onNavigate('logInteraction', mostWiltingEntry.person)
     }
   }
 
@@ -144,75 +174,119 @@ export default function Garden({ onNavigate }) {
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
-        <div className="grid grid-cols-3 gap-3">
-          <div className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm">
-            <span className="text-xl font-bold" style={{ color: '#1B2A4A' }}>
-              17
-            </span>
-            <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
-              Tended
-            </span>
-          </div>
-          <div className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm">
-            <span className="text-xl font-bold" style={{ color: '#D9912E' }}>
-              4
-            </span>
-            <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
-              Fading
-            </span>
-          </div>
-          <div className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm">
-            <span className="text-xl font-bold" style={{ color: '#B3261E' }}>
-              2
-            </span>
-            <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
-              Need Water
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-4 gap-3">
-          {plants.map((plant) => (
-            <div key={plant.name} className="flex flex-col items-center gap-1.5">
-              <div
-                className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm"
-              >
-                <PlantGraphic stage={plant.stage} />
-              </div>
-              <span
-                className="text-center text-xs font-medium leading-tight"
-                style={{ color: '#1B2A4A' }}
-              >
-                {plant.name.split(' ')[0]}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div
-          className="mt-6 rounded-2xl p-5 shadow-lg"
-          style={{ backgroundColor: '#1B2A4A' }}
-        >
-          <p className="text-sm font-medium leading-snug text-white">
-            One text changes a plant's color today.
+        {isLoading && (
+          <p className="py-6 text-center text-sm" style={{ color: '#9CA8C2' }}>
+            Loading your garden…
           </p>
-          <div className="relative mt-4">
-            <span
-              className="absolute -top-2.5 right-3 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-              style={{ backgroundColor: '#1B2A4A', color: '#C9A227', border: '1px solid #C9A227' }}
+        )}
+
+        {!isLoading && loadError && (
+          <p className="py-6 text-center text-sm" style={{ color: '#B3261E' }}>
+            {loadError}
+          </p>
+        )}
+
+        {!isLoading && !loadError && gardenEntries.length === 0 && (
+          <p className="py-6 text-center text-sm leading-relaxed" style={{ color: '#9CA8C2' }}>
+            Add people to your Vault and watch your garden grow.
+          </p>
+        )}
+
+        {!isLoading && !loadError && gardenEntries.length > 0 && (
+          <>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm">
+                <span className="text-xl font-bold" style={{ color: HEALTH_TIERS.thriving.color }}>
+                  {tierCounts.thriving}
+                </span>
+                <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
+                  Thriving
+                </span>
+              </div>
+              <div className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm">
+                <span className="text-xl font-bold" style={{ color: HEALTH_TIERS.needsWater.color }}>
+                  {tierCounts.needsWater}
+                </span>
+                <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
+                  Needs Water
+                </span>
+              </div>
+              <div className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm">
+                <span className="text-xl font-bold" style={{ color: HEALTH_TIERS.wilting.color }}>
+                  {tierCounts.wilting}
+                </span>
+                <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
+                  Wilting
+                </span>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-3">
+              {gardenEntries.map(({ person, days, tierKey }) => {
+                const tier = HEALTH_TIERS[tierKey]
+                return (
+                  <button
+                    key={person.id}
+                    type="button"
+                    onClick={() => onNavigate('personProfile', person)}
+                    className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
+                  >
+                    <div
+                      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
+                      style={{ backgroundColor: '#FAF6EE' }}
+                    >
+                      <HealthIcon tierKey={tierKey} color={tier.color} />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+                        {person.name}
+                      </p>
+                      <p className="text-xs" style={{ color: '#9CA8C2' }}>
+                        {person.relationship}
+                      </p>
+                      <p className="mt-1 text-xs" style={{ color: '#2E2E2E' }}>
+                        {formatDaysSinceContact(days)}
+                      </p>
+                    </div>
+
+                    <span
+                      className="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide"
+                      style={{ backgroundColor: `${tier.color}1A`, color: tier.color }}
+                    >
+                      {tier.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div
+              className="mt-6 rounded-2xl p-5 shadow-lg"
+              style={{ backgroundColor: '#1B2A4A' }}
             >
-              Pro
-            </span>
-            <button
-              type="button"
-              onClick={handleWaterTap}
-              className="w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
-              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
-            >
-              Water it
-            </button>
-          </div>
-        </div>
+              <p className="text-sm font-medium leading-snug text-white">
+                One text changes a plant's color today.
+              </p>
+              <div className="relative mt-4">
+                <span
+                  className="absolute -top-2.5 right-3 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+                  style={{ backgroundColor: '#1B2A4A', color: '#C9A227', border: '1px solid #C9A227' }}
+                >
+                  Pro
+                </span>
+                <button
+                  type="button"
+                  onClick={handleWaterTap}
+                  className="w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+                  style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+                >
+                  Water it
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </main>
 
       <BottomNav activeTab="garden" onChange={onNavigate} />
