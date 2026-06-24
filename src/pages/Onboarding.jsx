@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 
 const TOTAL_SLIDES = 5
 const SLIDE_WIDTH_PCT = 100 / TOTAL_SLIDES
@@ -65,54 +65,21 @@ const slideWrapperClass = 'flex h-full shrink-0 flex-col items-center justify-ce
 
 export default function Onboarding({ onComplete, onAddPerson }) {
   const [step, setStep] = useState(0)
-  const [dragX, setDragX] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const containerRef = useRef(null)
-  const startXRef = useRef(0)
 
   const goTo = (index) => setStep(Math.max(0, Math.min(TOTAL_SLIDES - 1, index)))
   const next = () => goTo(step + 1)
-
-  const handlePointerDown = (event) => {
-    setIsDragging(true)
-    startXRef.current = event.clientX
-    event.currentTarget.setPointerCapture?.(event.pointerId)
-  }
-
-  const handlePointerMove = (event) => {
-    if (!isDragging) return
-    setDragX(event.clientX - startXRef.current)
-  }
-
-  const endDrag = () => {
-    if (!isDragging) return
-    setIsDragging(false)
-    const width = containerRef.current?.offsetWidth || 1
-    const threshold = width * 0.18
-    if (dragX <= -threshold) goTo(step + 1)
-    else if (dragX >= threshold) goTo(step - 1)
-    setDragX(0)
-  }
+  const skipToEnd = () => goTo(TOTAL_SLIDES - 1)
 
   const trackStyle = {
     width: `${TOTAL_SLIDES * 100}%`,
-    transform: `translateX(calc(${-step * SLIDE_WIDTH_PCT}% + ${dragX}px))`,
-    transition: isDragging ? 'none' : 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
+    transform: `translateX(${-step * SLIDE_WIDTH_PCT}%)`,
+    transition: 'transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)',
   }
 
   return (
     <div className="flex min-h-screen w-full justify-center" style={{ backgroundColor: '#1B2A4A' }}>
       <div className="relative flex h-screen w-full max-w-[430px] flex-col overflow-hidden">
-        <div
-          ref={containerRef}
-          className="relative flex-1 overflow-hidden"
-          style={{ touchAction: 'none' }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-          onPointerLeave={endDrag}
-        >
+        <div className="relative flex-1 overflow-hidden">
           <div className="flex h-full" style={trackStyle}>
             {/* Slide 1 — Welcome */}
             <div className={slideWrapperClass} style={{ width: `${SLIDE_WIDTH_PCT}%` }}>
@@ -165,7 +132,7 @@ export default function Onboarding({ onComplete, onAddPerson }) {
               </button>
               <button
                 type="button"
-                onClick={onComplete}
+                onClick={skipToEnd}
                 className="mt-4 text-sm font-semibold"
                 style={{ color: '#9CA8C2' }}
               >
