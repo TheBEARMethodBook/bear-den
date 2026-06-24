@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useAuth } from '../contexts/useAuth'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
+import UpgradeBanner from '../components/UpgradeBanner'
+import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
 
 const SCRIPTS = [
   {
@@ -261,8 +264,19 @@ function Draft({ script, onBack }) {
 }
 
 export default function Wingman({ onNavigate }) {
+  const { user } = useAuth()
   const [selected, setSelected] = useState(null)
   const [customRequest, setCustomRequest] = useState('')
+  const proAccess = useProAccess(user)
+
+  const handleUpgrade = async () => {
+    try {
+      await upgradeToPro(user.id)
+      proAccess.markAsPro()
+    } catch {
+      // Keep the banner open on failure so the user can retry.
+    }
+  }
 
   if (selected) {
     return <Draft script={selected} onBack={() => setSelected(null)} />
@@ -285,70 +299,86 @@ export default function Wingman({ onNavigate }) {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
-        <div
-          className="rounded-full px-4 py-2 text-center text-xs font-semibold"
-          style={{ backgroundColor: '#FCF0DA', color: '#9A6B1E' }}
-        >
-          5 assists remaining this month
-        </div>
-
-        <div className="mt-4 flex flex-col gap-3">
-          {SCRIPTS.map((script) => (
-            <button
-              key={script.name}
-              type="button"
-              onClick={() => setSelected(script)}
-              className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
+      {proAccess.needsProAccess ? (
+        <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
+          <p className="text-sm" style={{ color: '#9CA8C2' }}>
+            Wingman is part of the full Den.
+          </p>
+        </main>
+      ) : (
+        <>
+          <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
+            <div
+              className="rounded-full px-4 py-2 text-center text-xs font-semibold"
+              style={{ backgroundColor: '#FCF0DA', color: '#9A6B1E' }}
             >
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-                  {script.name}
-                </p>
-                <p className="mt-0.5 text-xs leading-snug" style={{ color: '#9CA8C2' }}>
-                  {script.description}
-                </p>
-              </div>
-              <ArrowIcon />
-            </button>
-          ))}
-        </div>
-      </main>
+              5 assists remaining this month
+            </div>
 
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          const trimmed = customRequest.trim()
-          if (!trimmed) return
-          setSelected({
-            name: 'Custom request',
-            description: trimmed,
-            prompt: `Write a text message for this situation: "${trimmed}"`,
-          })
-          setCustomRequest('')
-        }}
-        className="mb-16 flex shrink-0 items-center gap-2 px-4 py-3"
-        style={{ backgroundColor: '#C9A227' }}
-      >
-        <input
-          type="text"
-          value={customRequest}
-          onChange={(event) => setCustomRequest(event.target.value)}
-          placeholder="Or describe what you need…"
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-[#5C4A14]"
-          style={{ color: '#1B2A4A' }}
-        />
-        <button
-          type="submit"
-          aria-label="Send voice or text request"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
-          style={{ backgroundColor: '#1B2A4A' }}
-        >
-          <MicIcon color="#C9A227" />
-        </button>
-      </form>
+            <div className="mt-4 flex flex-col gap-3">
+              {SCRIPTS.map((script) => (
+                <button
+                  key={script.name}
+                  type="button"
+                  onClick={() => setSelected(script)}
+                  className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+                      {script.name}
+                    </p>
+                    <p className="mt-0.5 text-xs leading-snug" style={{ color: '#9CA8C2' }}>
+                      {script.description}
+                    </p>
+                  </div>
+                  <ArrowIcon />
+                </button>
+              ))}
+            </div>
+          </main>
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              const trimmed = customRequest.trim()
+              if (!trimmed) return
+              setSelected({
+                name: 'Custom request',
+                description: trimmed,
+                prompt: `Write a text message for this situation: "${trimmed}"`,
+              })
+              setCustomRequest('')
+            }}
+            className="mb-16 flex shrink-0 items-center gap-2 px-4 py-3"
+            style={{ backgroundColor: '#C9A227' }}
+          >
+            <input
+              type="text"
+              value={customRequest}
+              onChange={(event) => setCustomRequest(event.target.value)}
+              placeholder="Or describe what you need…"
+              className="flex-1 bg-transparent text-sm outline-none placeholder:text-[#5C4A14]"
+              style={{ color: '#1B2A4A' }}
+            />
+            <button
+              type="submit"
+              aria-label="Send voice or text request"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: '#1B2A4A' }}
+            >
+              <MicIcon color="#C9A227" />
+            </button>
+          </form>
+        </>
+      )}
 
       <BottomNav activeTab="wingman" onChange={onNavigate} />
+
+      <UpgradeBanner
+        isOpen={proAccess.needsProAccess}
+        onClose={() => onNavigate('today')}
+        onUpgrade={handleUpgrade}
+      />
     </PhoneFrame>
   )
 }

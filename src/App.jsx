@@ -11,12 +11,7 @@ import LogInteraction from './pages/LogInteraction'
 import Garden from './pages/Garden'
 import Wingman from './pages/Wingman'
 import Profile from './pages/Profile'
-import UpgradeBanner from './components/UpgradeBanner'
-import { canShowUpgradeBanner, recordUpgradeBannerShown } from './lib/upgradeBannerFrequency'
-import { upgradeToPro, useProAccess } from './lib/subscriptionStatus'
-
-// Tabs that require an active Pro subscription once a user's free trial has ended.
-const PRO_GATED_TABS = ['wingman']
+import { useProAccess } from './lib/subscriptionStatus'
 
 function App() {
   const { user, loading } = useAuth()
@@ -24,35 +19,12 @@ function App() {
   const [hasOnboarded, setHasOnboarded] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
   const [hasSeenUpgradeScreen, setHasSeenUpgradeScreen] = useState(false)
-  const [showUpgradeBanner, setShowUpgradeBanner] = useState(false)
   const proAccess = useProAccess(user)
   const needsProAccess = proAccess.needsProAccess
 
   const handleNavigate = (tab, data) => {
     if (data) setSelectedPerson(data)
-
-    if (PRO_GATED_TABS.includes(tab) && needsProAccess) {
-      if (canShowUpgradeBanner(user.id)) {
-        recordUpgradeBannerShown(user.id)
-        setShowUpgradeBanner(true)
-      } else {
-        setActiveTab(tab)
-      }
-      return
-    }
-
     setActiveTab(tab)
-  }
-
-  const handleBannerUpgrade = async () => {
-    try {
-      await upgradeToPro(user.id)
-      proAccess.markAsPro()
-    } catch {
-      // Keep the banner open on failure so the user can retry.
-      return
-    }
-    setShowUpgradeBanner(false)
   }
 
   if (loading) {
@@ -141,16 +113,7 @@ function App() {
     return <Today onNavigate={handleNavigate} />
   }
 
-  return (
-    <>
-      {renderActiveScreen()}
-      <UpgradeBanner
-        isOpen={showUpgradeBanner}
-        onClose={() => setShowUpgradeBanner(false)}
-        onUpgrade={handleBannerUpgrade}
-      />
-    </>
-  )
+  return renderActiveScreen()
 }
 
 export default App

@@ -21,7 +21,23 @@ async function ensureSubscriptionRow(userId) {
     .select()
     .single()
 
-  if (insertError) throw insertError
+  if (insertError) {
+    // useProAccess runs independently in multiple mounted components at once (App.jsx
+    // plus whichever page is active), so two of these can race on a brand-new account:
+    // both SELECT find nothing, both INSERT, and the second hits the unique constraint
+    // on user_id. Re-fetch the row the winner just created instead of failing the
+    // whole check (which would otherwise force trialActive to a false-positive true).
+    const { data: existing, error: refetchError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (refetchError) throw refetchError
+    if (existing) return existing
+
+    throw insertError
+  }
 
   return created
 }
