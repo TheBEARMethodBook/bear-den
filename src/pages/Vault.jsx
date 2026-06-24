@@ -240,10 +240,14 @@ export default function Vault({ onNavigate }) {
     return matchesFilter && matchesQuery
   })
 
-  const isAddPersonLocked = people.length >= VAULT_FREE_LIMIT && proAccess.needsProAccess
+  // The lock icon only appears once they've actually hit the 15-person cap. Below that,
+  // the button still looks like a normal CTA — but any tap after the trial has expired
+  // shows the upsell instead of navigating, even with room left in the Vault.
+  const isAtVaultCap = people.length >= VAULT_FREE_LIMIT
+  const isAddPersonLocked = isAtVaultCap && proAccess.needsProAccess
 
   const handleAddPersonTap = () => {
-    if (isAddPersonLocked) {
+    if (proAccess.needsProAccess) {
       setShowVaultCapBanner(true)
     } else {
       onNavigate('addPerson')
