@@ -316,7 +316,7 @@ export function getActionForDay(dayNumber) {
   return BEAR_ACTIONS[index]
 }
 
-function toDateKey(value) {
+export function toDateKey(value) {
   const date = new Date(value)
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
