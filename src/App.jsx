@@ -42,11 +42,17 @@ function App() {
   const onboardingKey = `bearden_onboarded_${user.id}`
 
   if (!hasOnboarded && localStorage.getItem(onboardingKey) !== 'true') {
+    const completeOnboarding = () => {
+      localStorage.setItem(onboardingKey, 'true')
+      setHasOnboarded(true)
+    }
+
     return (
       <Onboarding
-        onComplete={() => {
-          localStorage.setItem(onboardingKey, 'true')
-          setHasOnboarded(true)
+        onComplete={completeOnboarding}
+        onAddPerson={() => {
+          completeOnboarding()
+          setActiveTab('addPerson')
         }}
       />
     )
