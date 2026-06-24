@@ -2,16 +2,9 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
-import { STAGE_DOT, fetchPeople } from '../lib/people'
+import { STAGE_DOT, fetchPeople, getInitials } from '../lib/people'
 
 const FILTERS = ['All', 'Building', 'Engaging', 'Strong', 'Restore']
-
-const STAGE_NEXT = {
-  Restore: 'Building',
-  Building: 'Engaging',
-  Engaging: 'Strong',
-  Strong: 'Strong',
-}
 
 const INITIAL_BENCH = [
   'Diane Brooks',
@@ -20,15 +13,6 @@ const INITIAL_BENCH = [
   'Connor Wells',
   'Anita Brooks',
 ]
-
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-}
 
 function SearchIcon() {
   return (
@@ -52,127 +36,6 @@ function BackIcon() {
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M15 18l-6-6 6-6" />
     </svg>
-  )
-}
-
-function PersonDetail({ person, onBack, onLogInteraction }) {
-  return (
-    <PhoneFrame>
-      <header
-        className="flex shrink-0 items-center gap-3 px-4 py-3"
-        style={{ backgroundColor: '#1B2A4A' }}
-      >
-        <button type="button" onClick={onBack} aria-label="Back">
-          <BackIcon />
-        </button>
-        <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
-          {person.name}
-        </span>
-      </header>
-
-      <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-              {person.relationship}
-            </p>
-            <p className="mt-1 text-sm" style={{ color: '#2E2E2E' }}>
-              {person.lastContacted}
-            </p>
-          </div>
-          <span
-            className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
-            style={{ backgroundColor: `${person.dot}1A`, color: person.dot }}
-          >
-            <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: person.dot }} />
-            {person.stage}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={onLogInteraction}
-          className="mt-4 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
-          style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
-        >
-          Log Interaction
-        </button>
-
-        {(person.phone || person.email) && (
-          <div className="mt-5 flex flex-col gap-1 rounded-xl bg-white p-4 shadow-sm">
-            {person.phone && (
-              <p className="text-sm" style={{ color: '#2E2E2E' }}>
-                {person.phone}
-              </p>
-            )}
-            {person.email && (
-              <p className="text-sm" style={{ color: '#2E2E2E' }}>
-                {person.email}
-              </p>
-            )}
-          </div>
-        )}
-
-        {person.howWeMet && (
-          <div className="mt-3">
-            <h2 className="text-base font-bold" style={{ color: '#1B2A4A' }}>
-              How we met
-            </h2>
-            <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
-              {person.howWeMet}
-            </p>
-          </div>
-        )}
-
-        {person.details && (
-          <div className="mt-4">
-            <h2 className="text-base font-bold" style={{ color: '#1B2A4A' }}>
-              Details that matter
-            </h2>
-            <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
-              {person.details}
-            </p>
-          </div>
-        )}
-
-        {person.importantDates && (
-          <div className="mt-4">
-            <h2 className="text-base font-bold" style={{ color: '#1B2A4A' }}>
-              Important dates
-            </h2>
-            <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
-              {person.importantDates}
-            </p>
-          </div>
-        )}
-
-        <h2 className="mt-7 text-base font-bold" style={{ color: '#1B2A4A' }}>
-          History
-        </h2>
-
-        <div className="mt-3 flex flex-col gap-3">
-          {person.history.length === 0 && (
-            <p className="text-sm" style={{ color: '#9CA8C2' }}>
-              No history yet.
-            </p>
-          )}
-          {person.history.map((entry, index) => (
-            <div
-              key={`${entry.date}-${index}`}
-              className="rounded-xl border-l-4 bg-white p-4 shadow-sm"
-              style={{ borderColor: '#C9A227' }}
-            >
-              <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-                {entry.date}
-              </span>
-              <p className="mt-1 text-sm leading-snug" style={{ color: '#2E2E2E' }}>
-                {entry.note}
-              </p>
-            </div>
-          ))}
-        </div>
-      </main>
-    </PhoneFrame>
   )
 }
 
@@ -332,7 +195,6 @@ export default function Vault({ onNavigate }) {
   const [loadError, setLoadError] = useState('')
   const [query, setQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState('All')
-  const [selectedId, setSelectedId] = useState(null)
   const [bench, setBench] = useState(INITIAL_BENCH)
   const [isBenchOpen, setIsBenchOpen] = useState(false)
   const [sortingName, setSortingName] = useState(null)
@@ -362,32 +224,6 @@ export default function Vault({ onNavigate }) {
     const matchesQuery = person.name.toLowerCase().includes(query.trim().toLowerCase())
     return matchesFilter && matchesQuery
   })
-
-  const selectedPerson = people.find((person) => (person.id ?? person.name) === selectedId)
-
-  if (selectedPerson) {
-    return (
-      <PersonDetail
-        person={selectedPerson}
-        onBack={() => setSelectedId(null)}
-        onLogInteraction={() => {
-          setPeople((prev) =>
-            prev.map((person) => {
-              if ((person.id ?? person.name) !== selectedId) return person
-              const nextStage = STAGE_NEXT[person.stage]
-              return {
-                ...person,
-                stage: nextStage,
-                dot: STAGE_DOT[nextStage],
-                lastContacted: 'Just now',
-                history: [{ date: 'Today', note: 'Logged an interaction.' }, ...person.history],
-              }
-            })
-          )
-        }}
-      />
-    )
-  }
 
   if (sortingName) {
     return (
@@ -488,7 +324,7 @@ export default function Vault({ onNavigate }) {
               <button
                 key={person.id ?? person.name}
                 type="button"
-                onClick={() => setSelectedId(person.id ?? person.name)}
+                onClick={() => onNavigate('personProfile', person)}
                 className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
               >
                 <div

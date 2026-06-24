@@ -29,6 +29,15 @@ function formatRelativeTime(value) {
   return `${years} ${years === 1 ? 'year' : 'years'} ago`
 }
 
+export function getInitials(name) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase()
+}
+
 export function mapPersonRow(row) {
   const stage = BEAR_STAGES.includes(row.bear_stage) ? row.bear_stage : 'Building'
   const lastContactedLabel = formatRelativeTime(row.last_contacted)
@@ -81,4 +90,13 @@ export async function insertPerson(userId, person) {
   if (error) throw error
 
   return mapPersonRow(data)
+}
+
+export async function updateLastContacted(personId) {
+  const { error } = await supabase
+    .from('people')
+    .update({ last_contacted: new Date().toISOString() })
+    .eq('id', personId)
+
+  if (error) throw error
 }

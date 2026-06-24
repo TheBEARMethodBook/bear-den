@@ -5,6 +5,8 @@ import Onboarding from './pages/Onboarding'
 import Today from './pages/Today'
 import Vault from './pages/Vault'
 import AddPerson from './pages/AddPerson'
+import PersonProfile from './pages/PersonProfile'
+import LogInteraction from './pages/LogInteraction'
 import Garden from './pages/Garden'
 import Wingman from './pages/Wingman'
 import Profile from './pages/Profile'
@@ -13,6 +15,12 @@ function App() {
   const { user, loading } = useAuth()
   const [activeTab, setActiveTab] = useState('today')
   const [hasOnboarded, setHasOnboarded] = useState(false)
+  const [selectedPerson, setSelectedPerson] = useState(null)
+
+  const handleNavigate = (tab, data) => {
+    if (data) setSelectedPerson(data)
+    setActiveTab(tab)
+  }
 
   if (loading) {
     return (
@@ -49,22 +57,30 @@ function App() {
   }
 
   if (activeTab === 'vault') {
-    return <Vault onNavigate={setActiveTab} />
+    return <Vault onNavigate={handleNavigate} />
+  }
+
+  if (activeTab === 'personProfile' && selectedPerson) {
+    return <PersonProfile person={selectedPerson} onNavigate={handleNavigate} />
+  }
+
+  if (activeTab === 'logInteraction' && selectedPerson) {
+    return <LogInteraction person={selectedPerson} onNavigate={handleNavigate} />
   }
 
   if (activeTab === 'addPerson') {
-    return <AddPerson onNavigate={setActiveTab} />
+    return <AddPerson onNavigate={handleNavigate} />
   }
 
   if (activeTab === 'garden') {
-    return <Garden onNavigate={setActiveTab} />
+    return <Garden onNavigate={handleNavigate} />
   }
 
   if (activeTab === 'wingman') {
-    return <Wingman onNavigate={setActiveTab} />
+    return <Wingman onNavigate={handleNavigate} />
   }
 
-  return <Today onNavigate={setActiveTab} />
+  return <Today onNavigate={handleNavigate} />
 }
 
 export default App
