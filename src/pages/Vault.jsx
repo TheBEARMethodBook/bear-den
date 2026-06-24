@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
+import UpgradeBanner from '../components/UpgradeBanner'
 import { STAGE_DOT, fetchPeople, getInitials } from '../lib/people'
+import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
+
+const VAULT_FREE_LIMIT = 15
 
 const FILTERS = ['All', 'Building', 'Engaging', 'Strong', 'Restore']
 
@@ -35,6 +39,15 @@ function BackIcon() {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M15 18l-6-6 6-6" />
+    </svg>
+  )
+}
+
+function LockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
     </svg>
   )
 }
@@ -198,6 +211,8 @@ export default function Vault({ onNavigate }) {
   const [bench, setBench] = useState(INITIAL_BENCH)
   const [isBenchOpen, setIsBenchOpen] = useState(false)
   const [sortingName, setSortingName] = useState(null)
+  const [showVaultCapBanner, setShowVaultCapBanner] = useState(false)
+  const proAccess = useProAccess(user)
 
   useEffect(() => {
     if (!user) return
@@ -224,6 +239,26 @@ export default function Vault({ onNavigate }) {
     const matchesQuery = person.name.toLowerCase().includes(query.trim().toLowerCase())
     return matchesFilter && matchesQuery
   })
+
+  const isAddPersonLocked = people.length >= VAULT_FREE_LIMIT && proAccess.needsProAccess
+
+  const handleAddPersonTap = () => {
+    if (isAddPersonLocked) {
+      setShowVaultCapBanner(true)
+    } else {
+      onNavigate('addPerson')
+    }
+  }
+
+  const handleVaultCapUpgrade = async () => {
+    try {
+      await upgradeToPro(user.id)
+      proAccess.markAsPro()
+    } catch {
+      return
+    }
+    setShowVaultCapBanner(false)
+  }
 
   if (sortingName) {
     return (
@@ -260,10 +295,15 @@ export default function Vault({ onNavigate }) {
         </span>
         <button
           type="button"
-          onClick={() => onNavigate('addPerson')}
-          className="rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide shadow-md"
-          style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          onClick={handleAddPersonTap}
+          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide shadow-md"
+          style={
+            isAddPersonLocked
+              ? { backgroundColor: '#FFFFFF', color: '#1B2A4A', border: '1px solid #1B2A4A' }
+              : { backgroundColor: '#C9A227', color: '#1B2A4A' }
+          }
         >
+          {isAddPersonLocked && <LockIcon />}
           Add Person
         </button>
       </header>
@@ -380,6 +420,13 @@ export default function Vault({ onNavigate }) {
       </main>
 
       <BottomNav activeTab="vault" onChange={onNavigate} />
+
+      <UpgradeBanner
+        isOpen={showVaultCapBanner}
+        onClose={() => setShowVaultCapBanner(false)}
+        onUpgrade={handleVaultCapUpgrade}
+        message="Your Vital 15 are in your Den. Ready to go deeper? Add everyone who matters with BEAR Den Pro."
+      />
     </PhoneFrame>
   )
 }

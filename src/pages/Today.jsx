@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
+import UpgradeBanner from '../components/UpgradeBanner'
 import { getActionForDay, getStreakStatus, recordDailyAction } from '../lib/dailyActions'
+import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
 
 function getGreetingName(user) {
   const fullName = user?.user_metadata?.full_name
@@ -104,6 +106,8 @@ export default function Today({ onNavigate }) {
   const [marking, setMarking] = useState(false)
   const [markError, setMarkError] = useState('')
   const [celebration, setCelebration] = useState(null)
+  const [showWhyUpgradeBanner, setShowWhyUpgradeBanner] = useState(false)
+  const proAccess = useProAccess(user)
 
   const name = getGreetingName(user)
   const dayNumber = streak + (actionDone ? 0 : 1)
@@ -125,6 +129,24 @@ export default function Today({ onNavigate }) {
       cancelled = true
     }
   }, [user])
+
+  const handleWhyThisWorksTap = () => {
+    if (proAccess.needsProAccess) {
+      setShowWhyUpgradeBanner(true)
+    } else {
+      setShowWhy(true)
+    }
+  }
+
+  const handleWhyUpgrade = async () => {
+    try {
+      await upgradeToPro(user.id)
+      proAccess.markAsPro()
+    } catch {
+      return
+    }
+    setShowWhyUpgradeBanner(false)
+  }
 
   const handleMarkDone = async () => {
     if (!user || actionDone || marking) return
@@ -259,7 +281,7 @@ export default function Today({ onNavigate }) {
             </button>
             <button
               type="button"
-              onClick={() => setShowWhy(true)}
+              onClick={handleWhyThisWorksTap}
               className="rounded-full border py-3 text-sm font-semibold uppercase tracking-wide"
               style={{ borderColor: '#C9A227', color: '#C9A227' }}
             >
@@ -316,6 +338,13 @@ export default function Today({ onNavigate }) {
           onDismiss={() => setCelebration(null)}
         />
       )}
+
+      <UpgradeBanner
+        isOpen={showWhyUpgradeBanner}
+        onClose={() => setShowWhyUpgradeBanner(false)}
+        onUpgrade={handleWhyUpgrade}
+        message="Chapter insights are part of the full Den. Upgrade to read the why behind every daily action."
+      />
     </PhoneFrame>
   )
 }

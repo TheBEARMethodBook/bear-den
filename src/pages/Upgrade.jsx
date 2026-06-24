@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { countInteractionsThisMonth } from '../lib/interactions'
 import { getDaysActive, upgradeToPro } from '../lib/subscriptionStatus'
 import { PRICING_PLANS } from '../lib/pricingPlans'
+
+const VAULT_FREE_LIMIT = 15
+const MONTHLY_FREE_LIMIT = 3
 
 function SparkleIcon({ size = 40 }) {
   return (
@@ -14,13 +18,25 @@ function SparkleIcon({ size = 40 }) {
 
 function StatItem({ value, label }) {
   return (
-    <div className="flex flex-1 flex-col items-center">
+    <div className="flex flex-col items-center">
       <span className="text-2xl font-bold" style={{ color: '#C9A227' }}>
         {value}
       </span>
       <span className="mt-1 text-center text-xs" style={{ color: '#9CA8C2' }}>
         {label}
       </span>
+    </div>
+  )
+}
+
+function LimitRow({ text, current, max }) {
+  const percent = Math.min(100, Math.round((current / max) * 100))
+  return (
+    <div className="mt-4">
+      <p className="text-sm font-semibold text-white">{text}</p>
+      <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: '#1B2A4A' }}>
+        <div className="h-full rounded-full" style={{ width: `${percent}%`, backgroundColor: '#C9A227' }} />
+      </div>
     </div>
   )
 }
@@ -58,24 +74,23 @@ function PlanCard({ plan, isSelected, onSelect }) {
 }
 
 async function fetchStats(userId) {
-  const [daysActive, peopleResult, interactionsResult] = await Promise.all([
+  const [daysActive, peopleResult, interactionsThisMonth] = await Promise.all([
     getDaysActive(userId),
     supabase.from('people').select('id', { count: 'exact', head: true }).eq('user_id', userId),
-    supabase.from('interactions').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    countInteractionsThisMonth(userId),
   ])
 
   if (peopleResult.error) throw peopleResult.error
-  if (interactionsResult.error) throw interactionsResult.error
 
   return {
     daysActive,
     peopleCount: peopleResult.count || 0,
-    interactionsCount: interactionsResult.count || 0,
+    interactionsThisMonth,
   }
 }
 
 export default function Upgrade({ user, onContinue }) {
-  const [stats, setStats] = useState({ daysActive: 0, peopleCount: 0, interactionsCount: 0 })
+  const [stats, setStats] = useState({ daysActive: 0, peopleCount: 0, interactionsThisMonth: 0 })
   const [selectedPlan, setSelectedPlan] = useState('annual')
   const [isUpgrading, setIsUpgrading] = useState(false)
   const [error, setError] = useState('')
@@ -121,10 +136,18 @@ export default function Upgrade({ user, onContinue }) {
           </p>
         </div>
 
-        <div className="mt-7 flex rounded-2xl p-4" style={{ backgroundColor: '#2E3F63' }}>
+        <div className="mt-7 rounded-2xl p-4" style={{ backgroundColor: '#2E3F63' }}>
           <StatItem value={stats.daysActive} label="Days active" />
-          <StatItem value={stats.peopleCount} label="People in Vault" />
-          <StatItem value={stats.interactionsCount} label="Interactions logged" />
+          <LimitRow
+            text={`Your Vault: ${stats.peopleCount} of ${VAULT_FREE_LIMIT} people`}
+            current={stats.peopleCount}
+            max={VAULT_FREE_LIMIT}
+          />
+          <LimitRow
+            text={`Interactions this month: ${stats.interactionsThisMonth} of ${MONTHLY_FREE_LIMIT}`}
+            current={stats.interactionsThisMonth}
+            max={MONTHLY_FREE_LIMIT}
+          />
         </div>
 
         <div className="mt-7 flex flex-col gap-4">

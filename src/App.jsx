@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from './contexts/useAuth'
 import Auth from './pages/Auth'
 import Onboarding from './pages/Onboarding'
@@ -13,7 +13,7 @@ import Wingman from './pages/Wingman'
 import Profile from './pages/Profile'
 import UpgradeBanner from './components/UpgradeBanner'
 import { canShowUpgradeBanner, recordUpgradeBannerShown } from './lib/upgradeBannerFrequency'
-import { isProUser, isTrialActive, upgradeToPro } from './lib/subscriptionStatus'
+import { upgradeToPro, useProAccess } from './lib/subscriptionStatus'
 
 // Tabs that require an active Pro subscription once a user's free trial has ended.
 const PRO_GATED_TABS = ['wingman']
@@ -23,33 +23,10 @@ function App() {
   const [activeTab, setActiveTab] = useState('today')
   const [hasOnboarded, setHasOnboarded] = useState(false)
   const [selectedPerson, setSelectedPerson] = useState(null)
-  const [subscription, setSubscription] = useState({ loaded: false, isPro: false, trialActive: true })
   const [hasSeenUpgradeScreen, setHasSeenUpgradeScreen] = useState(false)
   const [showUpgradeBanner, setShowUpgradeBanner] = useState(false)
-
-  useEffect(() => {
-    if (!user) return
-    let cancelled = false
-
-    Promise.all([isProUser(user.id), isTrialActive(user.id)])
-      .then(([isPro, trialActive]) => {
-        if (!cancelled) setSubscription({ loaded: true, isPro, trialActive })
-      })
-      .catch(() => {
-        if (!cancelled) setSubscription({ loaded: true, isPro: false, trialActive: true })
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [user])
-
-  // TEMPORARY testing escape hatch so the Pro gate can be exercised without waiting out a real
-  // 30-day trial, in any environment including production. Remove this flag before final launch.
-  // Enable from the browser console: localStorage.setItem('bearden_dev_force_trial_expired', 'true')
-  const debugForceExpired = localStorage.getItem('bearden_dev_force_trial_expired') === 'true'
-  const needsProAccess =
-    debugForceExpired || (subscription.loaded && !subscription.isPro && !subscription.trialActive)
+  const proAccess = useProAccess(user)
+  const needsProAccess = proAccess.needsProAccess
 
   const handleNavigate = (tab, data) => {
     if (data) setSelectedPerson(data)
@@ -70,7 +47,7 @@ function App() {
   const handleBannerUpgrade = async () => {
     try {
       await upgradeToPro(user.id)
-      setSubscription((prev) => ({ ...prev, isPro: true }))
+      proAccess.markAsPro()
     } catch {
       // Keep the banner open on failure so the user can retry.
       return

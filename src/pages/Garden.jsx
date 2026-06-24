@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { useAuth } from '../contexts/useAuth'
 import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
+import UpgradeBanner from '../components/UpgradeBanner'
+import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
 
 const STAGE_COLOR = {
   strongest: '#C9A227',
@@ -87,7 +90,10 @@ function PlantGraphic({ stage }) {
 }
 
 export default function Garden({ onNavigate }) {
+  const { user } = useAuth()
   const [plants, setPlants] = useState(INITIAL_PLANTS)
+  const [showUpgradeBanner, setShowUpgradeBanner] = useState(false)
+  const proAccess = useProAccess(user)
 
   const waterOne = () => {
     setPlants((prev) => {
@@ -97,6 +103,24 @@ export default function Garden({ onNavigate }) {
         index === targetIndex ? { ...plant, stage: STAGE_UP[plant.stage] } : plant
       )
     })
+  }
+
+  const handleWaterTap = () => {
+    if (proAccess.needsProAccess) {
+      setShowUpgradeBanner(true)
+    } else {
+      waterOne()
+    }
+  }
+
+  const handleUpgrade = async () => {
+    try {
+      await upgradeToPro(user.id)
+      proAccess.markAsPro()
+    } catch {
+      return
+    }
+    setShowUpgradeBanner(false)
   }
 
   return (
@@ -172,18 +196,33 @@ export default function Garden({ onNavigate }) {
           <p className="text-sm font-medium leading-snug text-white">
             One text changes a plant's color today.
           </p>
-          <button
-            type="button"
-            onClick={waterOne}
-            className="mt-4 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
-            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
-          >
-            Water it
-          </button>
+          <div className="relative mt-4">
+            <span
+              className="absolute -top-2.5 right-3 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide"
+              style={{ backgroundColor: '#1B2A4A', color: '#C9A227', border: '1px solid #C9A227' }}
+            >
+              Pro
+            </span>
+            <button
+              type="button"
+              onClick={handleWaterTap}
+              className="w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+            >
+              Water it
+            </button>
+          </div>
         </div>
       </main>
 
       <BottomNav activeTab="garden" onChange={onNavigate} />
+
+      <UpgradeBanner
+        isOpen={showUpgradeBanner}
+        onClose={() => setShowUpgradeBanner(false)}
+        onUpgrade={handleUpgrade}
+        message="Taking action from your Garden is a Pro feature. Upgrade to tend every relationship directly from here."
+      />
     </PhoneFrame>
   )
 }

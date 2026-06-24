@@ -1,6 +1,12 @@
 import { PRICING_PLANS } from '../lib/pricingPlans'
 
-export default function UpgradeBanner({ isOpen, onClose, onUpgrade }) {
+export default function UpgradeBanner({
+  isOpen,
+  onClose,
+  onUpgrade,
+  title = 'This is a BEAR Den Pro feature',
+  message = 'Upgrade to keep building without limits.',
+}) {
   if (!isOpen) return null
 
   return (
@@ -14,9 +20,9 @@ export default function UpgradeBanner({ isOpen, onClose, onUpgrade }) {
         style={{ backgroundColor: '#1B2A4A' }}
         onClick={(event) => event.stopPropagation()}
       >
-        <p className="text-center text-lg font-bold text-white">This is a BEAR Den Pro feature</p>
+        <p className="text-center text-lg font-bold text-white">{title}</p>
         <p className="mt-1 text-center text-sm" style={{ color: '#9CA8C2' }}>
-          Upgrade to keep building without limits.
+          {message}
         </p>
 
         <div className="mt-5 flex flex-col gap-3">

@@ -1,8 +1,12 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import PhoneFrame from '../components/PhoneFrame'
-import { insertInteraction } from '../lib/interactions'
+import UpgradeBanner from '../components/UpgradeBanner'
+import { countInteractionsThisMonth, insertInteraction } from '../lib/interactions'
 import { updateLastContacted } from '../lib/people'
+import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
+
+const MONTHLY_FREE_LIMIT = 3
 
 function getSpeechRecognition() {
   if (typeof window === 'undefined') return null
@@ -42,7 +46,37 @@ export default function LogInteraction({ person, onNavigate }) {
   const [isListening, setIsListening] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [monthlyCount, setMonthlyCount] = useState(null)
   const recognitionRef = useRef(null)
+  const proAccess = useProAccess(user)
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+
+    countInteractionsThisMonth(user.id)
+      .then((count) => {
+        if (!cancelled) setMonthlyCount(count)
+      })
+      .catch(() => {
+        if (!cancelled) setMonthlyCount(0)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  const isCapped = monthlyCount !== null && monthlyCount >= MONTHLY_FREE_LIMIT && proAccess.needsProAccess
+
+  const handleCapUpgrade = async () => {
+    try {
+      await upgradeToPro(user.id)
+      proAccess.markAsPro()
+    } catch {
+      // Keep the banner open on failure so the user can retry.
+    }
+  }
 
   const handleMicClick = () => {
     if (isListening) {
@@ -112,64 +146,81 @@ export default function LogInteraction({ person, onNavigate }) {
       </header>
 
       <main className="flex-1 overflow-y-auto px-4 py-5 pb-10">
-        <div className="flex flex-col gap-4">
-          <div className="relative">
-            <textarea
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              placeholder="What happened? Who did you reach out to, what did you talk about, how did it go?"
-              rows={8}
-              className="w-full rounded-2xl border px-4 py-3 pr-16 text-base leading-relaxed outline-none focus:ring-2"
-              style={{ borderColor: '#1B2A4A', color: '#2E2E2E', backgroundColor: '#FFFFFF' }}
-              autoFocus
-            />
+        {monthlyCount === null ? (
+          <p className="text-sm" style={{ color: '#9CA8C2' }}>
+            Loading…
+          </p>
+        ) : isCapped ? (
+          <p className="text-sm" style={{ color: '#9CA8C2' }}>
+            You've reached your monthly interaction limit.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="relative">
+              <textarea
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="What happened? Who did you reach out to, what did you talk about, how did it go?"
+                rows={8}
+                className="w-full rounded-2xl border px-4 py-3 pr-16 text-base leading-relaxed outline-none focus:ring-2"
+                style={{ borderColor: '#1B2A4A', color: '#2E2E2E', backgroundColor: '#FFFFFF' }}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={handleMicClick}
+                aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
+                className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full shadow-md"
+                style={{ backgroundColor: isListening ? '#1B2A4A' : '#C9A227' }}
+              >
+                <MicIcon color={isListening ? '#C9A227' : '#1B2A4A'} />
+              </button>
+            </div>
+
+            {isListening && (
+              <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#C9A227' }}>
+                Listening…
+              </p>
+            )}
+
+            <label className="flex flex-col gap-1">
+              <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
+                Date
+              </span>
+              <input
+                type="date"
+                value={date}
+                onChange={(event) => setDate(event.target.value)}
+                className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
+                style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
+              />
+            </label>
+
+            {error && (
+              <p className="text-sm font-medium" style={{ color: '#B3261E' }}>
+                {error}
+              </p>
+            )}
+
             <button
               type="button"
-              onClick={handleMicClick}
-              aria-label={isListening ? 'Stop voice input' : 'Start voice input'}
-              className="absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full shadow-md"
-              style={{ backgroundColor: isListening ? '#1B2A4A' : '#C9A227' }}
+              onClick={handleSave}
+              disabled={!notes.trim() || isSaving}
+              className="w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
             >
-              <MicIcon color={isListening ? '#C9A227' : '#1B2A4A'} />
+              {isSaving ? 'Saving…' : 'Save Interaction'}
             </button>
           </div>
-
-          {isListening && (
-            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#C9A227' }}>
-              Listening…
-            </p>
-          )}
-
-          <label className="flex flex-col gap-1">
-            <span className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-              Date
-            </span>
-            <input
-              type="date"
-              value={date}
-              onChange={(event) => setDate(event.target.value)}
-              className="rounded-lg border px-4 py-2 text-base outline-none focus:ring-2"
-              style={{ borderColor: '#1B2A4A', color: '#2E2E2E' }}
-            />
-          </label>
-
-          {error && (
-            <p className="text-sm font-medium" style={{ color: '#B3261E' }}>
-              {error}
-            </p>
-          )}
-
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={!notes.trim() || isSaving}
-            className="w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
-            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
-          >
-            {isSaving ? 'Saving…' : 'Save Interaction'}
-          </button>
-        </div>
+        )}
       </main>
+
+      <UpgradeBanner
+        isOpen={isCapped}
+        onClose={() => onNavigate('personProfile', person)}
+        onUpgrade={handleCapUpgrade}
+        message="You've logged 3 interactions this month. Pro members log unlimited. Keep the momentum going."
+      />
     </PhoneFrame>
   )
 }
