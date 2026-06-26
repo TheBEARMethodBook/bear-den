@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { countInteractionsThisMonth } from '../lib/interactions'
-import { getDaysActive, upgradeToPro } from '../lib/subscriptionStatus'
-import { PRICING_PLANS } from '../lib/pricingPlans'
+import { getDaysActive } from '../lib/subscriptionStatus'
 
 const VAULT_FREE_LIMIT = 15
 const MONTHLY_FREE_LIMIT = 3
+const MONTHLY_PRICE_ID = 'price_1TmefpRHH5ulKgdgK8jMjoAX'
+const ANNUAL_PRICE_ID = 'price_1TmegORHH5ulKgdgP0FE6Goy'
 
 function SparkleIcon({ size = 40 }) {
   return (
@@ -41,38 +42,6 @@ function LimitRow({ text, current, max }) {
   )
 }
 
-function PlanCard({ plan, isSelected, onSelect }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(plan.id)}
-      className="relative w-full rounded-2xl p-4 text-left"
-      style={{
-        backgroundColor: '#FFFFFF',
-        border: isSelected ? '2px solid #C9A227' : '2px solid transparent',
-      }}
-    >
-      {plan.badge && (
-        <span
-          className="absolute -top-3 right-4 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide"
-          style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
-        >
-          {plan.badge}
-        </span>
-      )}
-      <p className="text-sm font-semibold" style={{ color: '#1B2A4A' }}>
-        {plan.name}
-      </p>
-      <p className="mt-1 text-2xl font-bold" style={{ color: '#1B2A4A' }}>
-        {plan.price}
-        <span className="text-sm font-medium" style={{ color: '#9CA8C2' }}>
-          {plan.period}
-        </span>
-      </p>
-    </button>
-  )
-}
-
 async function fetchStats(userId) {
   const [daysActive, peopleResult, interactionsThisMonth] = await Promise.all([
     getDaysActive(userId),
@@ -89,10 +58,20 @@ async function fetchStats(userId) {
   }
 }
 
+async function createCheckoutSession(priceId, userId) {
+  const res = await fetch('/api/create-checkout-session', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ priceId, userId }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Failed to start checkout')
+  return data.url
+}
+
 export default function Upgrade({ user, onContinue }) {
   const [stats, setStats] = useState({ daysActive: 0, peopleCount: 0, interactionsThisMonth: 0 })
-  const [selectedPlan, setSelectedPlan] = useState('annual')
-  const [isUpgrading, setIsUpgrading] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -110,16 +89,16 @@ export default function Upgrade({ user, onContinue }) {
     }
   }, [user])
 
-  const handleUpgrade = async () => {
-    if (!user || isUpgrading) return
-    setIsUpgrading(true)
+  const handleCheckout = async (priceId, planKey) => {
+    if (!user || checkoutLoading) return
+    setCheckoutLoading(planKey)
     setError('')
     try {
-      await upgradeToPro(user.id)
-      onContinue()
+      const url = await createCheckoutSession(priceId, user.id)
+      window.location.href = url
     } catch (err) {
-      setError(err.message || 'Could not complete your upgrade. Try again.')
-      setIsUpgrading(false)
+      setError(err.message || 'Could not start checkout. Try again.')
+      setCheckoutLoading(null)
     }
   }
 
@@ -150,10 +129,26 @@ export default function Upgrade({ user, onContinue }) {
           />
         </div>
 
-        <div className="mt-7 flex flex-col gap-4">
-          {PRICING_PLANS.map((plan) => (
-            <PlanCard key={plan.id} plan={plan} isSelected={selectedPlan === plan.id} onSelect={setSelectedPlan} />
-          ))}
+        <div className="mt-7 flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => handleCheckout(ANNUAL_PRICE_ID, 'annual')}
+            disabled={!!checkoutLoading}
+            className="w-full rounded-full py-3.5 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            {checkoutLoading === 'annual' ? 'Opening checkout...' : 'Annual — $79/year (Save 27%)'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleCheckout(MONTHLY_PRICE_ID, 'monthly')}
+            disabled={!!checkoutLoading}
+            className="w-full rounded-full py-3.5 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
+            style={{ backgroundColor: '#1B2A4A', color: '#C9A227', border: '1px solid #C9A227' }}
+          >
+            {checkoutLoading === 'monthly' ? 'Opening checkout...' : 'Monthly — $9/month'}
+          </button>
         </div>
 
         {error && (
@@ -161,16 +156,6 @@ export default function Upgrade({ user, onContinue }) {
             {error}
           </p>
         )}
-
-        <button
-          type="button"
-          onClick={handleUpgrade}
-          disabled={isUpgrading}
-          className="mt-7 w-full rounded-full py-3.5 text-sm font-bold uppercase tracking-wide shadow-md disabled:opacity-60"
-          style={{ backgroundColor: '#1B2A4A', color: '#C9A227', border: '1px solid #C9A227' }}
-        >
-          {isUpgrading ? 'Setting up your Den…' : 'Get the Full Den'}
-        </button>
 
         <button
           type="button"
