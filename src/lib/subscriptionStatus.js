@@ -48,6 +48,7 @@ export async function isProUser(userId) {
 
 export async function isTrialActive(userId) {
   const subscription = await ensureSubscriptionRow(userId)
+  if (subscription.status !== 'trial') return false
   if (!subscription.trial_started_at) return false
 
   const daysSinceTrialStart = (Date.now() - new Date(subscription.trial_started_at).getTime()) / 86400000
