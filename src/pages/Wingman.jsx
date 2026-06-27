@@ -308,12 +308,14 @@ export default function Wingman({ onNavigate }) {
       ) : (
         <>
           <main className="flex-1 overflow-y-auto px-4 py-5 pb-24">
-            <div
-              className="rounded-full px-4 py-2 text-center text-xs font-semibold"
-              style={{ backgroundColor: '#FCF0DA', color: '#9A6B1E' }}
-            >
-              5 assists remaining this month
-            </div>
+            {!proAccess.isPro && (
+              <div
+                className="rounded-full px-4 py-2 text-center text-xs font-semibold"
+                style={{ backgroundColor: '#FCF0DA', color: '#9A6B1E' }}
+              >
+                5 assists remaining this month
+              </div>
+            )}
 
             <div className="mt-4 flex flex-col gap-3">
               {SCRIPTS.map((script) => (
