@@ -241,7 +241,7 @@ export default function Today({ onNavigate }) {
             className="text-xs font-bold uppercase tracking-widest"
             style={{ color: '#C9A227' }}
           >
-            Week {todaysAction.week} · {todaysAction.theme}
+            Week {Math.ceil(dayNumber / 7)} · {todaysAction.theme}
           </span>
 
           <p className="mt-3 text-sm leading-relaxed" style={{ color: '#2E2E2E' }}>
@@ -316,7 +316,7 @@ export default function Today({ onNavigate }) {
             className="text-xs font-bold uppercase tracking-widest"
             style={{ color: '#C9A227' }}
           >
-            Day {dayNumber} · Week {todaysAction.week} · {todaysAction.theme}
+            Day {dayNumber} · Week {Math.ceil(dayNumber / 7)} · {todaysAction.theme}
           </span>
           <p className="mt-3 text-base font-medium leading-snug text-white">
             {todaysAction.action}
