@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useAuth } from '../contexts/useAuth'
+import { upsertDisplayName } from '../lib/profiles'
 
 const TOTAL_SLIDES = 5
 const SLIDE_WIDTH_PCT = 100 / TOTAL_SLIDES
@@ -64,11 +66,30 @@ function PracticeRow({ icon, text }) {
 const slideWrapperClass = 'flex h-full shrink-0 flex-col items-center justify-center px-8 text-center'
 
 export default function Onboarding({ onComplete, onAddPerson }) {
+  const { user } = useAuth()
   const [step, setStep] = useState(0)
+  const [displayName, setDisplayName] = useState('')
 
   const goTo = (index) => setStep(Math.max(0, Math.min(TOTAL_SLIDES - 1, index)))
   const next = () => goTo(step + 1)
   const skipToEnd = () => goTo(TOTAL_SLIDES - 1)
+
+  const saveName = () => {
+    const trimmed = displayName.trim()
+    if (trimmed && user) {
+      upsertDisplayName(user.id, trimmed).catch(() => {})
+    }
+  }
+
+  const handleComplete = () => {
+    saveName()
+    onComplete()
+  }
+
+  const handleAddPerson = () => {
+    saveName()
+    onAddPerson()
+  }
 
   const trackStyle = {
     width: `${TOTAL_SLIDES * 100}%`,
@@ -91,10 +112,22 @@ export default function Onboarding({ onComplete, onAddPerson }) {
                 A lot of people will read, see and believe they need to make changes, however they need
                 an accountability system.
               </p>
+              <div className="mt-6 w-full max-w-xs">
+                <p className="mb-2 text-sm font-semibold text-white">What should we call you?</p>
+                <input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="First name or nickname"
+                  maxLength={40}
+                  className="w-full rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-amber-400"
+                  style={{ backgroundColor: '#FAF6EE', color: '#1B2A4A' }}
+                />
+              </div>
               <button
                 type="button"
                 onClick={next}
-                className="mt-8 w-full max-w-xs rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+                className="mt-5 w-full max-w-xs rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
                 style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
               >
                 Let's Build Yours
@@ -169,7 +202,7 @@ export default function Onboarding({ onComplete, onAddPerson }) {
               </p>
               <button
                 type="button"
-                onClick={onAddPerson}
+                onClick={handleAddPerson}
                 className="mt-8 w-full max-w-xs rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
                 style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
               >
@@ -191,7 +224,7 @@ export default function Onboarding({ onComplete, onAddPerson }) {
               </p>
               <button
                 type="button"
-                onClick={onComplete}
+                onClick={handleComplete}
                 className="mt-8 w-full max-w-xs rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
                 style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
               >

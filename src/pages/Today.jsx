@@ -5,6 +5,7 @@ import PhoneFrame from '../components/PhoneFrame'
 import UpgradeBanner from '../components/UpgradeBanner'
 import { getActionForDay, getStreakStatus, recordDailyAction } from '../lib/dailyActions'
 import { fetchReachOutNudges } from '../lib/people'
+import { getDisplayName } from '../lib/profiles'
 import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
 
 const RECENTLY_CONTACTED_DAYS = 7
@@ -22,7 +23,8 @@ function formatDaysSinceContact(value) {
   return `${days} days ago`
 }
 
-function getGreetingName(user) {
+function getGreetingName(user, profileName) {
+  if (profileName) return profileName
   const fullName = user?.user_metadata?.full_name
   if (fullName) return fullName.split(' ')[0]
   if (user?.email) return user.email.split('@')[0]
@@ -126,11 +128,17 @@ export default function Today({ onNavigate }) {
   const [nudges, setNudges] = useState([])
   const [nudgesLoading, setNudgesLoading] = useState(true)
   const [nudgesError, setNudgesError] = useState('')
+  const [profileName, setProfileName] = useState(null)
   const proAccess = useProAccess(user)
 
-  const name = getGreetingName(user)
+  const name = getGreetingName(user, profileName)
   const dayNumber = streak + (actionDone ? 0 : 1)
   const todaysAction = getActionForDay(dayNumber)
+
+  useEffect(() => {
+    if (!user) return
+    getDisplayName(user.id).then((name) => { if (name) setProfileName(name) }).catch(() => {})
+  }, [user])
 
   useEffect(() => {
     if (!user) return
