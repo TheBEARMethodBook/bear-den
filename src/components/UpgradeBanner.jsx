@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 
-const MONTHLY_PRICE_ID = 'price_1TmefpRHH5ulKgdgK8jMjoAX'
-const ANNUAL_PRICE_ID = 'price_1TmegORHH5ulKgdgP0FE6Goy'
+const MONTHLY_PRICE_ID = 'price_1Tn0leRNJr5Z3y1O9AOB4oec'
+const ANNUAL_PRICE_ID = 'price_1Tn0leRNJr5Z3y1O6mLf1rgg'
 
 async function createCheckoutSession(priceId, userId) {
   const res = await fetch('/api/create-checkout-session', {

@@ -5,8 +5,8 @@ import { getDaysActive } from '../lib/subscriptionStatus'
 
 const VAULT_FREE_LIMIT = 15
 const MONTHLY_FREE_LIMIT = 3
-const MONTHLY_PRICE_ID = 'price_1TmefpRHH5ulKgdgK8jMjoAX'
-const ANNUAL_PRICE_ID = 'price_1TmegORHH5ulKgdgP0FE6Goy'
+const MONTHLY_PRICE_ID = 'price_1Tn0leRNJr5Z3y1O9AOB4oec'
+const ANNUAL_PRICE_ID = 'price_1Tn0leRNJr5Z3y1O6mLf1rgg'
 
 function SparkleIcon({ size = 40 }) {
   return (
