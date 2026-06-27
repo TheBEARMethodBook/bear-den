@@ -77,7 +77,7 @@ export default function Onboarding({ onComplete, onAddPerson }) {
   const saveName = () => {
     const trimmed = displayName.trim()
     if (trimmed && user) {
-      upsertDisplayName(user.id, trimmed).catch(() => {})
+      upsertDisplayName(user.id, trimmed).catch((err) => console.error('Failed to save display name:', err.message))
     }
   }
 

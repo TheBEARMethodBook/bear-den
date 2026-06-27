@@ -137,7 +137,7 @@ export default function Today({ onNavigate }) {
 
   useEffect(() => {
     if (!user) return
-    getDisplayName(user.id).then((name) => { if (name) setProfileName(name) }).catch(() => {})
+    getDisplayName(user.id).then((fetched) => { if (fetched) setProfileName(fetched) }).catch(() => {})
   }, [user])
 
   useEffect(() => {
