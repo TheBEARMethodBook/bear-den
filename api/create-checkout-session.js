@@ -23,8 +23,8 @@ export default async function handler(req, res) {
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: 'https://getbearden.com/success',
-      cancel_url: 'https://getbearden.com',
+      success_url: 'https://www.getbearden.com/success',
+      cancel_url: 'https://www.getbearden.com',
       metadata: { userId },
     })
 
