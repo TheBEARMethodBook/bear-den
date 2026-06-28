@@ -23,7 +23,7 @@ function App() {
   const needsProAccess = proAccess.needsProAccess
 
   const handleNavigate = (tab, data) => {
-    if (data) setSelectedPerson(data)
+    setSelectedPerson(data || null)
     setActiveTab(tab)
   }
 
@@ -107,7 +107,7 @@ function App() {
     }
 
     if (activeTab === 'wingman') {
-      return <Wingman onNavigate={handleNavigate} />
+      return <Wingman onNavigate={handleNavigate} preloadedPerson={selectedPerson} />
     }
 
     return <Today onNavigate={handleNavigate} />

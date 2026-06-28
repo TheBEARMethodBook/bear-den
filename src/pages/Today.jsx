@@ -387,13 +387,15 @@ export default function Today({ onNavigate }) {
               nudges.length > 0 &&
               !everyoneRecentlyContacted &&
               nudges.map((person) => (
-                <button
+                <div
                   key={person.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onNavigate('personProfile', person)}
-                  className="flex items-center justify-between gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate('personProfile', person) }}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-white p-4 text-left shadow-sm cursor-pointer"
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold" style={{ color: '#C9A227' }}>
                       {person.name}
                     </p>
@@ -404,13 +406,15 @@ export default function Today({ onNavigate }) {
                       {formatDaysSinceContact(person.lastContactedAt)}
                     </p>
                   </div>
-                  <span
-                    className="shrink-0 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-wide"
-                    style={{ backgroundColor: '#FAF6EE', color: '#1B2A4A', border: '1px solid #1B2A4A' }}
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onNavigate('wingman', person) }}
+                    className="shrink-0 rounded-full px-3 py-1.5 text-xs font-bold"
+                    style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
                   >
-                    Reach out
-                  </span>
-                </button>
+                    Write a note
+                  </button>
+                </div>
               ))}
           </div>
         </section>

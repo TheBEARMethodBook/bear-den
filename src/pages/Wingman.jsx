@@ -91,6 +91,20 @@ async function fetchWingmanOptions(basePrompt, { isRetry, seed }) {
   return parseTwoOptions(data.text || '')
 }
 
+function buildPersonScript(person) {
+  const parts = [`Write a no-agenda check-in text to ${person.name}.`]
+  if (person.relationship_type) parts.push(`They are my ${person.relationship_type}.`)
+  if (person.bear_stage) parts.push(`Our relationship stage: ${person.bear_stage}.`)
+  if (person.details) parts.push(`Background: ${person.details}.`)
+  if (person.important_dates) parts.push(`Important dates to be aware of: ${person.important_dates}.`)
+  parts.push('Reach out just because they crossed my mind, with no ask attached.')
+  return {
+    name: `Check in with ${person.name}`,
+    description: `Reach out to ${person.name} without asking for anything back.`,
+    prompt: parts.join(' '),
+  }
+}
+
 function SparkleIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="#C9A227">
@@ -263,9 +277,9 @@ function Draft({ script, onBack }) {
   )
 }
 
-export default function Wingman({ onNavigate }) {
+export default function Wingman({ onNavigate, preloadedPerson = null }) {
   const { user } = useAuth()
-  const [selected, setSelected] = useState(null)
+  const [selected, setSelected] = useState(preloadedPerson ? buildPersonScript(preloadedPerson) : null)
   const [customRequest, setCustomRequest] = useState('')
   const proAccess = useProAccess(user)
 
