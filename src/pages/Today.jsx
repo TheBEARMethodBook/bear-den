@@ -7,6 +7,7 @@ import { getActionForDay, getStreakStatus, recordDailyAction } from '../lib/dail
 import { fetchReachOutNudges } from '../lib/people'
 import { getDisplayName } from '../lib/profiles'
 import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
+import { saveReflection as saveReflectionToDb } from '../lib/reflections'
 
 const RECENTLY_CONTACTED_DAYS = 7
 
@@ -83,12 +84,12 @@ function celebrationSubMessage({ streak, isFirstEver }) {
   return null
 }
 
-function CelebrationOverlay({ streak, isFirstEver, onDismiss }) {
+function CelebrationOverlay({ streak, isFirstEver, onDismiss, reflection, onReflectionChange, onSaveReflection, reflectionSaved }) {
   const subMessage = celebrationSubMessage({ streak, isFirstEver })
 
   return (
     <div
-      className="absolute inset-0 z-50 flex flex-col items-center justify-center px-8 text-center"
+      className="absolute inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto px-8 py-10 text-center"
       style={{ backgroundColor: '#1B2A4A' }}
     >
       <SparkleIcon size={56} />
@@ -96,7 +97,7 @@ function CelebrationOverlay({ streak, isFirstEver, onDismiss }) {
         {streak}
       </p>
       <p className="mt-2 text-xs font-bold uppercase tracking-widest" style={{ color: '#C9A227' }}>
-        {streak === 1 ? 'Day Streak' : 'Day Streak'}
+        Day Streak
       </p>
       <p className="mt-8 text-xl font-bold text-white">You're becoming IMPOSSIBLE to replace.</p>
       {subMessage && (
@@ -104,10 +105,42 @@ function CelebrationOverlay({ streak, isFirstEver, onDismiss }) {
           {subMessage}
         </p>
       )}
+      <div className="mt-6 w-full max-w-xs text-left">
+        <p className="text-sm" style={{ color: '#C9A227', opacity: 0.8 }}>
+          Who did you reach out to today? (optional)
+        </p>
+        <textarea
+          rows={3}
+          value={reflection}
+          onChange={onReflectionChange}
+          placeholder="A name, a note, anything..."
+          className="mt-1 w-full resize-none rounded-lg border p-2 text-sm"
+          style={{
+            backgroundColor: 'rgba(27, 42, 74, 0.3)',
+            borderColor: 'rgba(201, 162, 39, 0.3)',
+            color: '#FAF6EE',
+          }}
+        />
+        {reflection.trim().length > 0 && (
+          <button
+            type="button"
+            onClick={onSaveReflection}
+            className="mt-2 w-full rounded-full py-2 text-sm font-bold uppercase tracking-wide shadow-md"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            Save Reflection
+          </button>
+        )}
+        {reflectionSaved && (
+          <p className="mt-1 text-center text-sm font-semibold" style={{ color: '#C9A227' }}>
+            Saved.
+          </p>
+        )}
+      </div>
       <button
         type="button"
         onClick={onDismiss}
-        className="mt-10 w-full max-w-xs rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+        className="mt-6 w-full max-w-xs rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
         style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
       >
         Dismiss
@@ -129,6 +162,8 @@ export default function Today({ onNavigate }) {
   const [nudgesLoading, setNudgesLoading] = useState(true)
   const [nudgesError, setNudgesError] = useState('')
   const [profileName, setProfileName] = useState(null)
+  const [reflection, setReflection] = useState('')
+  const [reflectionSaved, setReflectionSaved] = useState(false)
   const proAccess = useProAccess(user)
 
   const name = getGreetingName(user, profileName)
@@ -202,6 +237,18 @@ export default function Today({ onNavigate }) {
       return
     }
     setShowWhyUpgradeBanner(false)
+  }
+
+  const handleSaveReflection = async () => {
+    if (!reflection.trim() || !celebration) return
+    try {
+      await saveReflectionToDb(user.id, reflection.trim(), celebration.streak)
+      setReflection('')
+      setReflectionSaved(true)
+      setTimeout(() => setReflectionSaved(false), 2000)
+    } catch {
+      // reflection is optional — fail silently
+    }
   }
 
   const handleMarkDone = async () => {
@@ -426,7 +473,11 @@ export default function Today({ onNavigate }) {
         <CelebrationOverlay
           streak={celebration.streak}
           isFirstEver={celebration.isFirstEver}
-          onDismiss={() => setCelebration(null)}
+          onDismiss={() => { setCelebration(null); setReflection(''); setReflectionSaved(false) }}
+          reflection={reflection}
+          onReflectionChange={(e) => setReflection(e.target.value)}
+          onSaveReflection={handleSaveReflection}
+          reflectionSaved={reflectionSaved}
         />
       )}
 

@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/useAuth'
 import PhoneFrame from '../components/PhoneFrame'
+import { getReflectionCount } from '../lib/reflections'
 
 const STATS = [
   { label: 'Day streak', value: '12' },
@@ -438,6 +439,12 @@ function HelpSupport({ onBack }) {
 export default function Profile({ onBack }) {
   const { user, signOut } = useAuth()
   const [screen, setScreen] = useState('list')
+  const [reflectionCount, setReflectionCount] = useState(0)
+
+  useEffect(() => {
+    if (!user) return
+    getReflectionCount(user.id).then(setReflectionCount).catch(() => {})
+  }, [user])
 
   if (screen === 'editProfile') {
     return <EditProfile onBack={() => setScreen('list')} />
@@ -482,7 +489,7 @@ export default function Profile({ onBack }) {
               className="flex flex-col items-center rounded-xl bg-white px-2 py-4 shadow-sm"
             >
               <span className="text-xl font-bold" style={{ color: '#C9A227' }}>
-                {stat.value}
+                {stat.label === 'Reflections' ? reflectionCount : stat.value}
               </span>
               <span className="mt-1 text-center text-xs font-medium" style={{ color: '#2E2E2E' }}>
                 {stat.label}
