@@ -5,11 +5,23 @@ import PhoneFrame from '../components/PhoneFrame'
 import UpgradeBanner from '../components/UpgradeBanner'
 import { getActionForDay, getStreakStatus, recordDailyAction } from '../lib/dailyActions'
 import { fetchPeople, fetchReachOutNudges } from '../lib/people'
+import { supabase } from '../lib/supabase'
 import { getDisplayName } from '../lib/profiles'
 import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
 import { saveReflection as saveReflectionToDb } from '../lib/reflections'
 
 const RECENTLY_CONTACTED_DAYS = 7
+
+const isSunday = new Date().getDay() === 0
+
+function getThisWeekKey() {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  const day = d.getDay()
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  d.setDate(d.getDate() + diffToMonday)
+  return d.toISOString().slice(0, 10)
+}
 
 function daysSinceContact(value) {
   if (!value) return null
@@ -152,6 +164,14 @@ function CalendarIcon() {
   )
 }
 
+function CloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
+  )
+}
+
 function celebrationSubMessage({ streak, isFirstEver }) {
   if (isFirstEver) {
     return "You just did what most people never do. You reached out with nothing to gain."
@@ -230,6 +250,116 @@ function CelebrationOverlay({ streak, isFirstEver, onDismiss, reflection, onRefl
   )
 }
 
+function WeeklyRecapScreen({ streak, weeklyStats, onNavigate, onDismiss }) {
+  const { weeklyInteractions, thriving, needsWater, wilting, mostOverdue } = weeklyStats || {}
+
+  return (
+    <PhoneFrame>
+      <header
+        className="flex shrink-0 items-center justify-between px-4 py-3"
+        style={{ backgroundColor: '#1B2A4A' }}
+      >
+        <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
+          Your Week
+        </span>
+        <button type="button" onClick={onDismiss} aria-label="Close recap">
+          <CloseIcon />
+        </button>
+      </header>
+
+      <main className="flex-1 overflow-y-auto px-4 py-6 pb-10">
+        <div className="flex justify-center">
+          <SparkleIcon size={40} />
+        </div>
+
+        <p className="mt-4 text-center text-2xl font-bold" style={{ color: '#1B2A4A' }}>
+          Here's how your week looked.
+        </p>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className="rounded-xl p-4 shadow-sm" style={{ backgroundColor: '#FAF6EE' }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
+              Relationships touched
+            </p>
+            <p className="mt-1 text-3xl font-bold" style={{ color: '#1B2A4A' }}>
+              {weeklyInteractions ?? '--'}
+            </p>
+          </div>
+
+          <div className="rounded-xl p-4 shadow-sm" style={{ backgroundColor: '#FAF6EE' }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
+              Current streak
+            </p>
+            <p className="mt-1 text-3xl font-bold" style={{ color: '#1B2A4A' }}>
+              {streak}
+            </p>
+            <p className="text-xs" style={{ color: '#9CA8C2' }}>days</p>
+          </div>
+
+          <div className="rounded-xl p-4 shadow-sm" style={{ backgroundColor: '#FAF6EE' }}>
+            <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
+              Thriving
+            </p>
+            <p className="mt-1 text-3xl font-bold" style={{ color: '#2A7A3A' }}>
+              {thriving ?? '--'}
+            </p>
+          </div>
+
+          <div className="rounded-xl p-4 shadow-sm" style={{ backgroundColor: '#FAF6EE' }}>
+            {wilting > 0 ? (
+              <>
+                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
+                  Wilting
+                </p>
+                <p className="mt-1 text-3xl font-bold" style={{ color: '#B3261E' }}>
+                  {wilting}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: '#9CA8C2' }}>
+                  Needs Water
+                </p>
+                <p className="mt-1 text-3xl font-bold" style={{ color: '#9A6B1E' }}>
+                  {needsWater ?? '--'}
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+
+        {mostOverdue && (
+          <div className="mt-5 rounded-xl p-4 shadow-sm" style={{ backgroundColor: '#FAF6EE' }}>
+            <p className="text-sm" style={{ color: '#9CA8C2' }}>
+              Your most overdue connection
+            </p>
+            <p className="mt-1 text-base font-bold" style={{ color: '#1B2A4A' }}>
+              {mostOverdue.name}
+            </p>
+            <button
+              type="button"
+              onClick={() => onNavigate('wingman', mostOverdue)}
+              className="mt-3 w-full rounded-full py-2.5 text-sm font-bold uppercase tracking-wide shadow-md"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+            >
+              Write a note
+            </button>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="mt-6 w-full rounded-full py-3 text-sm font-bold uppercase tracking-wide shadow-md"
+          style={{ backgroundColor: '#FAF6EE', color: '#1B2A4A' }}
+        >
+          Got it, let's go
+        </button>
+      </main>
+    </PhoneFrame>
+  )
+}
+
 export default function Today({ onNavigate }) {
   const { user } = useAuth()
   const [actionDone, setActionDone] = useState(false)
@@ -244,8 +374,11 @@ export default function Today({ onNavigate }) {
   const [nudgesError, setNudgesError] = useState('')
   const [profileName, setProfileName] = useState(null)
   const [allPeople, setAllPeople] = useState([])
+  const [allPeopleLoaded, setAllPeopleLoaded] = useState(false)
   const [reflection, setReflection] = useState('')
   const [reflectionSaved, setReflectionSaved] = useState(false)
+  const [showWeeklyRecap, setShowWeeklyRecap] = useState(false)
+  const [weeklyStats, setWeeklyStats] = useState(null)
   const proAccess = useProAccess(user)
 
   const name = getGreetingName(user, profileName)
@@ -301,10 +434,71 @@ export default function Today({ onNavigate }) {
     if (!user) return
     let cancelled = false
     fetchPeople(user.id)
-      .then((rows) => { if (!cancelled) setAllPeople(rows) })
-      .catch(() => {})
+      .then((rows) => {
+        if (!cancelled) {
+          setAllPeople(rows)
+          setAllPeopleLoaded(true)
+        }
+      })
+      .catch(() => { if (!cancelled) setAllPeopleLoaded(true) })
     return () => { cancelled = true }
   }, [user])
+
+  useEffect(() => {
+    if (!user) return
+    if (!isSunday) return
+    const key = `bearden_recap_dismissed_${getThisWeekKey()}`
+    if (!localStorage.getItem(key)) {
+      setShowWeeklyRecap(true)
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (!showWeeklyRecap || !user || !allPeopleLoaded) return
+    let cancelled = false
+
+    ;(async () => {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+      const { count } = await supabase
+        .from('interactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .gte('interacted_at', sevenDaysAgo)
+
+      if (cancelled) return
+
+      const now = Date.now()
+      let thriving = 0
+      let needsWater = 0
+      let wilting = 0
+
+      for (const person of allPeople) {
+        const days = person.lastContactedAt
+          ? Math.floor((now - new Date(person.lastContactedAt).getTime()) / 86400000)
+          : null
+        if (days === null || days > 30) wilting++
+        else if (days <= 14) thriving++
+        else needsWater++
+      }
+
+      const sorted = [...allPeople].sort((a, b) => {
+        if (!a.lastContactedAt && !b.lastContactedAt) return 0
+        if (!a.lastContactedAt) return -1
+        if (!b.lastContactedAt) return 1
+        return new Date(a.lastContactedAt) - new Date(b.lastContactedAt)
+      })
+
+      setWeeklyStats({
+        weeklyInteractions: count || 0,
+        thriving,
+        needsWater,
+        wilting,
+        mostOverdue: sorted[0] || null,
+      })
+    })()
+
+    return () => { cancelled = true }
+  }, [showWeeklyRecap, user, allPeople, allPeopleLoaded])
 
   // nudges is sorted longest-since-contact first (nulls first), so checking just the
   // first entry tells us whether everyone is within the recently-contacted window.
@@ -344,6 +538,12 @@ export default function Today({ onNavigate }) {
     }
   }
 
+  const dismissRecap = () => {
+    const key = `bearden_recap_dismissed_${getThisWeekKey()}`
+    localStorage.setItem(key, '1')
+    setShowWeeklyRecap(false)
+  }
+
   const handleMarkDone = async () => {
     if (!user || actionDone || marking) return
     setMarking(true)
@@ -359,6 +559,17 @@ export default function Today({ onNavigate }) {
     } finally {
       setMarking(false)
     }
+  }
+
+  if (showWeeklyRecap) {
+    return (
+      <WeeklyRecapScreen
+        streak={streak}
+        weeklyStats={weeklyStats}
+        onNavigate={onNavigate}
+        onDismiss={dismissRecap}
+      />
+    )
   }
 
   if (showWhy) {
