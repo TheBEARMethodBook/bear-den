@@ -256,13 +256,13 @@ function WeeklyRecapScreen({ streak, weeklyStats, onNavigate, onDismiss }) {
   return (
     <PhoneFrame>
       <header
-        className="flex shrink-0 items-center justify-between px-4 py-3"
+        className="relative flex shrink-0 items-center justify-center px-4 py-3"
         style={{ backgroundColor: '#1B2A4A' }}
       >
         <span className="text-lg font-bold tracking-tight" style={{ color: '#C9A227' }}>
-          Your Week
+          Weekly Recap
         </span>
-        <button type="button" onClick={onDismiss} aria-label="Close recap">
+        <button type="button" onClick={onDismiss} aria-label="Close recap" className="absolute right-4">
           <CloseIcon />
         </button>
       </header>
@@ -473,19 +473,24 @@ export default function Today({ onNavigate }) {
       let wilting = 0
 
       for (const person of allPeople) {
-        const days = person.lastContactedAt
+        const contactDays = person.lastContactedAt
           ? Math.floor((now - new Date(person.lastContactedAt).getTime()) / 86400000)
           : null
-        if (days === null || days > 30) wilting++
-        else if (days <= 14) thriving++
-        else needsWater++
+        const createdDays = person.createdAt
+          ? Math.floor((now - new Date(person.createdAt).getTime()) / 86400000)
+          : 0
+        const effectiveDays = contactDays !== null ? contactDays : createdDays
+        if (effectiveDays <= 14) thriving++
+        else if (effectiveDays <= 30) needsWater++
+        else wilting++
       }
 
+      // Sort by effective date: use last_contacted if available, fall back to created_at.
+      // Oldest effective date = most overdue = first in list.
       const sorted = [...allPeople].sort((a, b) => {
-        if (!a.lastContactedAt && !b.lastContactedAt) return 0
-        if (!a.lastContactedAt) return -1
-        if (!b.lastContactedAt) return 1
-        return new Date(a.lastContactedAt) - new Date(b.lastContactedAt)
+        const aEffective = new Date(a.lastContactedAt || a.createdAt || Date.now())
+        const bEffective = new Date(b.lastContactedAt || b.createdAt || Date.now())
+        return aEffective - bEffective
       })
 
       setWeeklyStats({

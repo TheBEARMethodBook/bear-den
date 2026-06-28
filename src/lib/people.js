@@ -67,7 +67,11 @@ export async function fetchPeople(userId) {
 
   if (error) throw error
 
-  return (data || []).map(mapPersonRow)
+  return (data || []).map((row) => ({
+    ...mapPersonRow(row),
+    lastContactedAt: row.last_contacted,
+    createdAt: row.created_at,
+  }))
 }
 
 async function fetchPeopleWithLastContacted(userId, { limit } = {}) {
