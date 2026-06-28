@@ -98,6 +98,7 @@ function buildPersonScript(person) {
   if (person.details) parts.push(`Background: ${person.details}.`)
   if (person.important_dates) parts.push(`Important dates to be aware of: ${person.important_dates}.`)
   parts.push('Reach out just because they crossed my mind, with no ask attached.')
+  parts.push('Never use em dashes in any generated text. Use commas, periods, or restructured sentences instead.')
   return {
     name: `Check in with ${person.name}`,
     description: `Reach out to ${person.name} without asking for anything back.`,
