@@ -4,7 +4,7 @@ import BottomNav from '../components/BottomNav'
 import PhoneFrame from '../components/PhoneFrame'
 import UpgradeBanner from '../components/UpgradeBanner'
 import { getActionForDay, getStreakStatus, recordDailyAction } from '../lib/dailyActions'
-import { fetchReachOutNudges } from '../lib/people'
+import { fetchPeople, fetchReachOutNudges } from '../lib/people'
 import { getDisplayName } from '../lib/profiles'
 import { upgradeToPro, useProAccess } from '../lib/subscriptionStatus'
 import { saveReflection as saveReflectionToDb } from '../lib/reflections'
@@ -46,6 +46,78 @@ function getInitials(user) {
   return '?'
 }
 
+const MONTH_NAMES = {
+  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6,
+  july: 7, august: 8, september: 9, october: 10, november: 11, december: 12,
+  jan: 1, feb: 2, mar: 3, apr: 4, jun: 6, jul: 7, aug: 8,
+  sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
+}
+
+function extractLabel(text, matchIndex) {
+  const before = text.slice(0, matchIndex).trim()
+  const m = before.match(/([A-Za-z]+)\s*[:,-]?\s*$/)
+  return m ? m[1] : 'Date'
+}
+
+function parseUpcomingDates(people) {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const results = []
+
+  for (const person of people) {
+    if (!person.importantDates) continue
+    const text = person.importantDates
+    const found = []
+
+    // Match "March 15", "jan 3rd", "February 8th", etc.
+    const monthNameRe = /([a-zA-Z]+)\s+(\d{1,2})(?:st|nd|rd|th)?/g
+    let m
+    while ((m = monthNameRe.exec(text)) !== null) {
+      const monthNum = MONTH_NAMES[m[1].toLowerCase()]
+      const day = parseInt(m[2], 10)
+      if (!monthNum || day < 1 || day > 31) continue
+      found.push({ monthNum, day, label: extractLabel(text, m.index) })
+    }
+
+    // Match "3/15", "03/15"
+    const numericRe = /\b(\d{1,2})\/(\d{1,2})\b/g
+    while ((m = numericRe.exec(text)) !== null) {
+      const monthNum = parseInt(m[1], 10)
+      const day = parseInt(m[2], 10)
+      if (monthNum < 1 || monthNum > 12 || day < 1 || day > 31) continue
+      found.push({ monthNum, day, label: extractLabel(text, m.index) })
+    }
+
+    for (const { monthNum, day, label } of found) {
+      for (let yearOffset = 0; yearOffset <= 1; yearOffset++) {
+        const candidate = new Date(today.getFullYear() + yearOffset, monthNum - 1, day)
+        candidate.setHours(0, 0, 0, 0)
+        const diffDays = Math.round((candidate - today) / 86400000)
+        if (diffDays >= 0 && diffDays <= 7) {
+          results.push({ personName: person.name, dateLabel: label, daysUntil: diffDays, person })
+          break
+        }
+      }
+    }
+  }
+
+  results.sort((a, b) => a.daysUntil - b.daysUntil)
+
+  const seen = new Set()
+  return results.filter(({ personName, dateLabel, daysUntil }) => {
+    const key = `${personName}|${dateLabel}|${daysUntil}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+function formatDaysUntil(label, daysUntil) {
+  if (daysUntil === 0) return `${label} today`
+  if (daysUntil === 1) return `${label} tomorrow`
+  return `${label} in ${daysUntil} days`
+}
+
 function FlameIcon({ color }) {
   return (
     <svg viewBox="0 0 24 24" width="16" height="16" fill={color}>
@@ -67,6 +139,15 @@ function SparkleIcon({ size = 20 }) {
     <svg viewBox="0 0 24 24" width={size} height={size} fill="#C9A227">
       <path d="M12 2l1.8 5.6L19 9.5l-5.2 1.9L12 17l-1.8-5.6L5 9.5l5.2-1.9Z" />
       <path d="M19 14l.9 2.8L22.5 18l-2.6.9L19 21.5l-.9-2.6L15.5 18l2.6-1.2Z" />
+    </svg>
+  )
+}
+
+function CalendarIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#C9A227" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
     </svg>
   )
 }
@@ -162,6 +243,7 @@ export default function Today({ onNavigate }) {
   const [nudgesLoading, setNudgesLoading] = useState(true)
   const [nudgesError, setNudgesError] = useState('')
   const [profileName, setProfileName] = useState(null)
+  const [allPeople, setAllPeople] = useState([])
   const [reflection, setReflection] = useState('')
   const [reflectionSaved, setReflectionSaved] = useState(false)
   const proAccess = useProAccess(user)
@@ -215,11 +297,22 @@ export default function Today({ onNavigate }) {
     }
   }, [user])
 
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    fetchPeople(user.id)
+      .then((rows) => { if (!cancelled) setAllPeople(rows) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [user])
+
   // nudges is sorted longest-since-contact first (nulls first), so checking just the
   // first entry tells us whether everyone is within the recently-contacted window.
   const mostOverdueDays = daysSinceContact(nudges[0]?.lastContactedAt)
   const everyoneRecentlyContacted =
     nudges.length > 0 && mostOverdueDays !== null && mostOverdueDays <= RECENTLY_CONTACTED_DAYS
+
+  const upcomingDates = parseUpcomingDates(allPeople)
 
   const handleWhyThisWorksTap = () => {
     if (proAccess.needsProAccess) {
@@ -398,6 +491,34 @@ export default function Today({ onNavigate }) {
             </p>
           )}
         </div>
+
+        {upcomingDates.length > 0 && (
+          <section className="mt-7">
+            <h2 className="text-base font-bold" style={{ color: '#1B2A4A' }}>
+              Coming up
+            </h2>
+            <div className="mt-3 flex flex-col gap-3">
+              {upcomingDates.map((item, index) => (
+                <button
+                  key={`${item.personName}-${item.dateLabel}-${index}`}
+                  type="button"
+                  onClick={() => onNavigate('personProfile', item.person)}
+                  className="flex items-center gap-3 rounded-xl bg-white p-3 text-left shadow-sm"
+                >
+                  <CalendarIcon />
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold" style={{ color: '#C9A227' }}>
+                      {item.personName}
+                    </p>
+                    <p className="mt-0.5 text-xs" style={{ color: '#9CA8C2' }}>
+                      {formatDaysUntil(item.dateLabel, item.daysUntil)}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="mt-7">
           <h2 className="text-base font-bold" style={{ color: '#1B2A4A' }}>
