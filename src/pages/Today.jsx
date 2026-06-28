@@ -379,6 +379,9 @@ export default function Today({ onNavigate }) {
   const [reflectionSaved, setReflectionSaved] = useState(false)
   const [showWeeklyRecap, setShowWeeklyRecap] = useState(false)
   const [weeklyStats, setWeeklyStats] = useState(null)
+  const [wingmanNudgeDismissed, setWingmanNudgeDismissed] = useState(
+    () => localStorage.getItem('bearden_wingman_nudge_dismissed') === 'true'
+  )
   const proAccess = useProAccess(user)
 
   const name = getGreetingName(user, profileName)
@@ -512,6 +515,13 @@ export default function Today({ onNavigate }) {
     nudges.length > 0 && mostOverdueDays !== null && mostOverdueDays <= RECENTLY_CONTACTED_DAYS
 
   const upcomingDates = parseUpcomingDates(allPeople)
+
+  const { trialActive, isPro, trialStartedAt } = proAccess
+  const isDay14Nudge = trialActive && trialStartedAt && !isPro && (() => {
+    const days = (Date.now() - new Date(trialStartedAt).getTime()) / 86400000
+    return days >= 13 && days < 15
+  })()
+  const showWingmanNudge = isDay14Nudge && !wingmanNudgeDismissed
 
   const handleWhyThisWorksTap = () => {
     if (proAccess.needsProAccess) {
@@ -707,6 +717,42 @@ export default function Today({ onNavigate }) {
             </p>
           )}
         </div>
+
+        {showWingmanNudge && (
+          <div
+            className="mt-5 rounded-xl p-4 shadow-sm"
+            style={{ backgroundColor: '#FAF6EE', border: '1px solid rgba(201,162,39,0.4)' }}
+          >
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#C9A227' }}>
+              Day 14 of your trial
+            </p>
+            <p className="mt-1 text-sm font-bold" style={{ color: '#1B2A4A' }}>
+              You haven't tried your Wingman yet.
+            </p>
+            <p className="mt-1 text-sm" style={{ color: '#9CA8C2' }}>
+              Let it draft something for someone in your Vault. One tap.
+            </p>
+            <button
+              type="button"
+              onClick={() => onNavigate('wingman')}
+              className="mt-3 w-full rounded-full py-2.5 text-sm font-bold uppercase tracking-wide shadow-md"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+            >
+              Try Wingman Now
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem('bearden_wingman_nudge_dismissed', 'true')
+                setWingmanNudgeDismissed(true)
+              }}
+              className="mt-2 w-full text-center text-xs"
+              style={{ color: '#9CA8C2' }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {upcomingDates.length > 0 && (
           <section className="mt-7">

@@ -82,18 +82,25 @@ export async function upgradeToPro(userId) {
 // Why This Works, Garden actions, and the Wingman tab. needsProAccess is true once a
 // user's free trial has lapsed without upgrading.
 export function useProAccess(user) {
-  const [state, setState] = useState({ loaded: false, isPro: false, trialActive: true })
+  const [state, setState] = useState({ loaded: false, isPro: false, trialActive: true, trialStartedAt: null })
 
   useEffect(() => {
     if (!user) return
     let cancelled = false
 
-    Promise.all([isProUser(user.id), isTrialActive(user.id)])
-      .then(([isPro, trialActive]) => {
-        if (!cancelled) setState({ loaded: true, isPro, trialActive })
+    ensureSubscriptionRow(user.id)
+      .then((subscription) => {
+        if (cancelled) return
+        const isPro = subscription.status === 'pro'
+        const trialStartedAt = subscription.trial_started_at || null
+        const trialActive =
+          subscription.status === 'trial' &&
+          !!trialStartedAt &&
+          (Date.now() - new Date(trialStartedAt).getTime()) / 86400000 < TRIAL_LENGTH_DAYS
+        setState({ loaded: true, isPro, trialActive, trialStartedAt })
       })
       .catch(() => {
-        if (!cancelled) setState({ loaded: true, isPro: false, trialActive: true })
+        if (!cancelled) setState({ loaded: true, isPro: false, trialActive: true, trialStartedAt: null })
       })
 
     return () => {
