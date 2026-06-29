@@ -538,7 +538,7 @@ export default function Profile({ onBack }) {
             The BEAR Method
           </p>
           <p className="text-sm mt-1" style={{ color: '#9CA8C2' }}>
-            Be Impossible to Replace
+            Be IMPOSSIBLE to Replace
           </p>
           <p className="text-xs mt-2 leading-relaxed" style={{ color: '#9CA8C2' }}>
             This app is the accountability companion to the book by Michael Knight. If someone shared this app with you, the book is where it all began.
