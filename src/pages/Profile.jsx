@@ -527,6 +527,33 @@ export default function Profile({ onBack }) {
         >
           Sign Out
         </button>
+
+        <div className="border-t border-gray-200 mt-6 mb-6" />
+
+        <div className="text-center px-4 pb-4">
+          <p className="text-xs font-semibold tracking-widest uppercase" style={{ color: '#C9A227' }}>
+            ABOUT THIS APP
+          </p>
+          <p className="text-base font-bold mt-1" style={{ color: '#1B2A4A' }}>
+            The BEAR Method
+          </p>
+          <p className="text-sm mt-1" style={{ color: '#9CA8C2' }}>
+            Be Impossible to Replace
+          </p>
+          <p className="text-xs mt-2 leading-relaxed" style={{ color: '#9CA8C2' }}>
+            This app is the accountability companion to the book by Michael Knight. If someone shared this app with you, the book is where it all began.
+          </p>
+          <a
+            href="https://www.thebearmethod.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-block rounded-full px-4 py-2 text-sm font-bold"
+            style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+          >
+            Get The Book
+          </a>
+        </div>
+
       </main>
     </PhoneFrame>
   )
