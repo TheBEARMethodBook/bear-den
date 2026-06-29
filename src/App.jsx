@@ -11,6 +11,7 @@ import LogInteraction from './pages/LogInteraction'
 import Garden from './pages/Garden'
 import Wingman from './pages/Wingman'
 import Profile from './pages/Profile'
+import TheWork from './pages/TheWork'
 import { useProAccess } from './lib/subscriptionStatus'
 
 function App() {
@@ -83,7 +84,11 @@ function App() {
 
   const renderActiveScreen = () => {
     if (activeTab === 'profile') {
-      return <Profile onBack={() => setActiveTab('today')} />
+      return <Profile onBack={() => setActiveTab('today')} onNavigate={handleNavigate} />
+    }
+
+    if (activeTab === 'theWork') {
+      return <TheWork onNavigate={handleNavigate} user={user} />
     }
 
     if (activeTab === 'vault') {

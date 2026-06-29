@@ -14,6 +14,7 @@ const SETTINGS = [
   { key: 'notifications', label: 'Notifications', description: 'Choose what The BEAR Den tells you' },
   { key: 'privacySecurity', label: 'Privacy & Security', description: 'Password and account info' },
   { key: 'helpSupport', label: 'Help & Support', description: 'FAQs and answers' },
+  { key: 'theWork', label: 'The Work', description: 'Do the exercises. Do the work.' },
 ]
 
 const NOTIFICATION_TYPES = [
@@ -436,7 +437,7 @@ function HelpSupport({ onBack }) {
   )
 }
 
-export default function Profile({ onBack }) {
+export default function Profile({ onBack, onNavigate }) {
   const { user, signOut } = useAuth()
   const [screen, setScreen] = useState('list')
   const [reflectionCount, setReflectionCount] = useState(0)
@@ -503,7 +504,7 @@ export default function Profile({ onBack }) {
             <button
               key={item.key}
               type="button"
-              onClick={() => setScreen(item.key)}
+              onClick={() => item.key === 'theWork' ? onNavigate?.('theWork') : setScreen(item.key)}
               className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
             >
               <div className="min-w-0 flex-1">
