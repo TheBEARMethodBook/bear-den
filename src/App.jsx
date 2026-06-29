@@ -12,6 +12,7 @@ import Garden from './pages/Garden'
 import Wingman from './pages/Wingman'
 import Profile from './pages/Profile'
 import TheWork from './pages/TheWork'
+import HowToUse from './pages/HowToUse'
 import { useProAccess } from './lib/subscriptionStatus'
 
 function App() {
@@ -89,6 +90,10 @@ function App() {
 
     if (activeTab === 'theWork') {
       return <TheWork onNavigate={handleNavigate} user={user} />
+    }
+
+    if (activeTab === 'howToUse') {
+      return <HowToUse onNavigate={handleNavigate} />
     }
 
     if (activeTab === 'vault') {

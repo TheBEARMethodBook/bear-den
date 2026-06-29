@@ -14,6 +14,7 @@ const SETTINGS = [
   { key: 'notifications', label: 'Notifications', description: 'Choose what The BEAR Den tells you' },
   { key: 'privacySecurity', label: 'Privacy & Security', description: 'Password and account info' },
   { key: 'helpSupport', label: 'Help & Support', description: 'FAQs and answers' },
+  { key: 'howToUse', label: 'How to Use The BEAR Den', description: 'A quick guide to getting the most out of the app' },
   { key: 'theWork', label: 'The Work', description: 'Do the exercises. Do the work.' },
 ]
 
@@ -504,7 +505,7 @@ export default function Profile({ onBack, onNavigate }) {
             <button
               key={item.key}
               type="button"
-              onClick={() => item.key === 'theWork' ? onNavigate?.('theWork') : setScreen(item.key)}
+              onClick={() => ['theWork', 'howToUse'].includes(item.key) ? onNavigate?.(item.key) : setScreen(item.key)}
               className="flex items-center gap-3 rounded-xl bg-white p-4 text-left shadow-sm"
             >
               <div className="min-w-0 flex-1">
