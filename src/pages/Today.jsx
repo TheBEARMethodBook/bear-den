@@ -382,11 +382,28 @@ export default function Today({ onNavigate }) {
   const [wingmanNudgeDismissed, setWingmanNudgeDismissed] = useState(
     () => localStorage.getItem('bearden_wingman_nudge_dismissed') === 'true'
   )
+  const [workNewNudgeDismissed, setWorkNewNudgeDismissed] = useState(
+    () => localStorage.getItem('bearden_work_new_dismissed') === 'true'
+  )
+  const [workReturnNudgeDismissed, setWorkReturnNudgeDismissed] = useState(() => {
+    const val = localStorage.getItem('bearden_work_return_dismissed')
+    if (!val) return false
+    return (Date.now() - parseInt(val)) < 30 * 86400000
+  })
+  const [daysSinceLastSeen, setDaysSinceLastSeen] = useState(0)
   const proAccess = useProAccess(user)
 
   const name = getGreetingName(user, profileName)
   const dayNumber = streak + (actionDone ? 0 : 1)
   const todaysAction = getActionForDay(dayNumber)
+
+  useEffect(() => {
+    const lastSeenStr = localStorage.getItem('bearden_last_seen')
+    localStorage.setItem('bearden_last_seen', new Date().toISOString())
+    if (lastSeenStr) {
+      setDaysSinceLastSeen((Date.now() - new Date(lastSeenStr).getTime()) / 86400000)
+    }
+  }, [])
 
   useEffect(() => {
     if (!user) return
@@ -522,6 +539,11 @@ export default function Today({ onNavigate }) {
     return days >= 13 && days < 15
   })()
   const showWingmanNudge = isDay14Nudge && !wingmanNudgeDismissed
+
+  const isNewUser = trialStartedAt && ((Date.now() - new Date(trialStartedAt).getTime()) / 86400000) < 7
+  const showWorkNewNudge = isNewUser && !workNewNudgeDismissed
+  const isLongAbsence = daysSinceLastSeen >= 7
+  const showWorkReturnNudge = isLongAbsence && !workReturnNudgeDismissed && !showWorkNewNudge
 
   const handleWhyThisWorksTap = () => {
     if (proAccess.needsProAccess) {
@@ -745,6 +767,78 @@ export default function Today({ onNavigate }) {
               onClick={() => {
                 localStorage.setItem('bearden_wingman_nudge_dismissed', 'true')
                 setWingmanNudgeDismissed(true)
+              }}
+              className="mt-2 w-full text-center text-xs"
+              style={{ color: '#9CA8C2' }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {showWorkNewNudge && (
+          <div
+            className="mt-5 rounded-xl p-4 shadow-sm"
+            style={{ backgroundColor: '#FAF6EE', border: '1px solid rgba(201,162,39,0.4)' }}
+          >
+            <p className="text-xs font-bold tracking-widest" style={{ color: '#C9A227' }}>
+              GET STARTED
+            </p>
+            <p className="mt-1 text-base font-bold" style={{ color: '#1B2A4A' }}>
+              Have you done The Work?
+            </p>
+            <p className="mt-1 text-sm" style={{ color: '#9CA8C2' }}>
+              The BEAR Method has 12 chapters of exercises built into this app. Five minutes each. They change everything.
+            </p>
+            <button
+              type="button"
+              onClick={() => onNavigate('theWork')}
+              className="mt-3 w-full rounded-full py-2 text-sm font-bold"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+            >
+              Start Chapter 1
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem('bearden_work_new_dismissed', 'true')
+                setWorkNewNudgeDismissed(true)
+              }}
+              className="mt-2 w-full text-center text-xs"
+              style={{ color: '#9CA8C2' }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {showWorkReturnNudge && (
+          <div
+            className="mt-5 rounded-xl p-4 shadow-sm"
+            style={{ backgroundColor: '#FAF6EE', border: '1px solid rgba(201,162,39,0.4)' }}
+          >
+            <p className="text-xs font-bold tracking-widest" style={{ color: '#C9A227' }}>
+              WELCOME BACK
+            </p>
+            <p className="mt-1 text-base font-bold" style={{ color: '#1B2A4A' }}>
+              While you were away, The Work was waiting.
+            </p>
+            <p className="mt-1 text-sm" style={{ color: '#9CA8C2' }}>
+              Pick up where you left off. The exercises are still there.
+            </p>
+            <button
+              type="button"
+              onClick={() => onNavigate('theWork')}
+              className="mt-3 w-full rounded-full py-2 text-sm font-bold"
+              style={{ backgroundColor: '#C9A227', color: '#1B2A4A' }}
+            >
+              Return to The Work
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem('bearden_work_return_dismissed', Date.now().toString())
+                setWorkReturnNudgeDismissed(true)
               }}
               className="mt-2 w-full text-center text-xs"
               style={{ color: '#9CA8C2' }}
