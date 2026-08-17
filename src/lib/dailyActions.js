@@ -324,24 +324,8 @@ export function toDateKey(value) {
   return `${year}-${month}-${day}`
 }
 
-function addDays(dateKey, delta) {
-  const [year, month, day] = dateKey.split('-').map(Number)
-  const date = new Date(year, month - 1, day)
-  date.setDate(date.getDate() + delta)
-  return toDateKey(date)
-}
-
-function computeStreak(dateKeys, todayKey) {
-  const completedToday = dateKeys.has(todayKey)
-  let cursor = completedToday ? todayKey : addDays(todayKey, -1)
-
-  let streak = 0
-  while (dateKeys.has(cursor)) {
-    streak += 1
-    cursor = addDays(cursor, -1)
-  }
-
-  return { streak, completedToday }
+function computeTotalDays(dateKeys) {
+  return dateKeys.size
 }
 
 async function fetchCompletionDateKeys(userId) {
@@ -358,9 +342,10 @@ async function fetchCompletionDateKeys(userId) {
 export async function getStreakStatus(userId) {
   const dateKeys = await fetchCompletionDateKeys(userId)
   const todayKey = toDateKey(new Date())
-  const { streak, completedToday } = computeStreak(dateKeys, todayKey)
+  const completedToday = dateKeys.has(todayKey)
+  const totalDays = computeTotalDays(dateKeys)
 
-  return { streak, completedToday, isFirstEver: dateKeys.size === 0 }
+  return { streak: totalDays, completedToday, isFirstEver: dateKeys.size === 0 }
 }
 
 export async function recordDailyAction(userId, actionText) {
@@ -369,12 +354,12 @@ export async function recordDailyAction(userId, actionText) {
   const isFirstEver = dateKeys.size === 0
 
   if (dateKeys.has(todayKey)) {
-    const { streak } = computeStreak(dateKeys, todayKey)
+    const streak = computeTotalDays(dateKeys)
     return { streak, isFirstEver: false }
   }
 
   dateKeys.add(todayKey)
-  const { streak } = computeStreak(dateKeys, todayKey)
+  const streak = computeTotalDays(dateKeys)
 
   const { error } = await supabase.from('daily_actions').insert({
     user_id: userId,

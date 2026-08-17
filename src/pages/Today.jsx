@@ -172,21 +172,20 @@ function CloseIcon() {
   )
 }
 
-function celebrationSubMessage({ streak, isFirstEver }) {
-  if (isFirstEver) {
-    return "You just did what most people never do. You reached out with nothing to gain."
-  }
-  if (streak === 7) {
-    return "Seven days of intentional connection. Your relationships feel the difference."
-  }
-  if (streak === 30) {
-    return "Thirty days. You didn't just read about this. You lived it."
-  }
+const celebrationSubMessage = (streak, isFirstEver) => {
+  if (isFirstEver) return "You just did what most people never do. You showed up."
+  if (streak === 5) return "Five days in. You are building something real."
+  if (streak === 10) return "Ten days. Most people quit before this. You didn't."
+  if (streak === 20) return "Twenty days of showing up. Your relationships feel it."
+  if (streak === 30) return "Thirty days. You didn't just read about this. You lived it."
+  if (streak === 50) return "Fifty days. You are becoming IMPOSSIBLE to replace."
+  if (streak === 75) return "Seventy-five days. This is who you are now."
+  if (streak === 100) return "One hundred days. The person who started this would barely recognize you."
   return null
 }
 
 function CelebrationOverlay({ streak, isFirstEver, onDismiss, reflection, onReflectionChange, onSaveReflection, reflectionSaved }) {
-  const subMessage = celebrationSubMessage({ streak, isFirstEver })
+  const subMessage = celebrationSubMessage(streak, isFirstEver)
 
   return (
     <div
@@ -629,7 +628,7 @@ export default function Today({ onNavigate }) {
             className="text-xs font-bold uppercase tracking-widest"
             style={{ color: '#C9A227' }}
           >
-            Week {Math.ceil(dayNumber / 7)} · {todaysAction.theme}
+            DAY {dayNumber} · {todaysAction.theme}
           </span>
 
           <p className="mt-3 text-sm leading-relaxed" style={{ color: '#2E2E2E' }}>
@@ -704,7 +703,7 @@ export default function Today({ onNavigate }) {
             className="text-xs font-bold uppercase tracking-widest"
             style={{ color: '#C9A227' }}
           >
-            Day {dayNumber} · Week {Math.ceil(dayNumber / 7)} · {todaysAction.theme}
+            DAY {dayNumber} · {todaysAction.theme}
           </span>
           <p className="mt-3 text-base font-medium leading-snug text-white">
             {todaysAction.action}
